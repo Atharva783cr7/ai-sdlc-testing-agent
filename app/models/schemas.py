@@ -63,6 +63,28 @@ class TestDesignSummary(BaseModel):
     warnings: List[str] = Field(default_factory=list, description="Test design validation warnings")
 
 
+class TestExecutionResult(BaseModel):
+    test_case_id: str
+    status: str
+    details: Optional[str] = None
+    module: Optional[str] = None
+
+
+class TestExecutionSummary(BaseModel):
+    total: int
+    passed: int
+    failed: int
+    errors: int
+    skipped: int
+
+
+class TestExecutionResponse(BaseModel):
+    project_id: str
+    execution_status: Optional[str] = Field(default=None, description="Execution lifecycle status: completed, no_tests, skipped, error")
+    execution_summary: TestExecutionSummary
+    results: List[TestExecutionResult] = Field(default_factory=list)
+
+
 class TestingStartResponse(BaseModel):
     """
     Response model returning the results of the Testing Agent workflow execution.

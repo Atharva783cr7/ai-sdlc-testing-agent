@@ -200,3 +200,80 @@ def test_api_start_malformed_request():
     
     data = response.json()
     assert "detail" in data
+
+
+def test_api_execute_flow(monkeypatch):
+    """
+    Test full execute flow: LangGraph -> ExecutionController -> aggregated results -> API response
+    ExecutionController.execute_test_suite is mocked to avoid external calls.
+    """
+    from app.api import testing as testing_api
+    # Mock ExecutionController.execute_test_suite to return a deterministic report
+    def fake_execute(self, cases):
+        return {
+            "results": [
+                {"test_case_id": "TC-001", "status": "PASS", "details": "ok", "module": "api"},
+                {"test_case_id": "TC-007", "status": "SKIPPED", "details": "selenium missing", "module": "ui"},
+            ],
+            "summary": {"total": 2, "pass": 1, "fail": 0, "error": 0, "skipped": 1},
+        }
+
+    monkeypatch.setattr(testing_api.ExecutionController, "execute_test_suite", fake_execute)
+
+    payload = {
+        "project_id": "exec-flow-001",
+        "srs": {"title": "SRS"},
+        "sdd": {"architecture": "Service"},
+        "source_code": {"repository": "git@github.com:example/repo.git"},
+    }
+
+    response = client.post("/testing/execute", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["project_id"] == "exec-flow-001"
+    assert data["execution_status"] == "completed"
+    assert data["execution_summary"]["total"] == 2
+    assert data["execution_summary"]["passed"] == 1
+    assert len(data["results"]) == 2
+
+
+def test_api_execute_no_tests(monkeypatch):
+    """
+    If the workflow produces zero test cases, API should return execution_status='no_tests' and zero summary.
+    """
+    # Prepare a final_state that mimics a successful workflow but no test cases
+    final_state = {
+        "project_id": "no-tests-001",
+        "validation_status": "passed",
+        "validation_errors": [],
+        "workflow_status": "completed",
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
+    }
+
+    # Monkeypatch the workflow invoke to return our final_state
+    monkeypatch.setattr(testing_workflow, "invoke", lambda s: final_state)
+
+    payload = {
+        "project_id": "no-tests-001",
+        "srs": {"title": "SRS"},
+        "sdd": {"architecture": "Service"},
+        "source_code": {"repository": "git@github.com:example/repo.git"},
+    }
+
+    response = client.post("/testing/execute", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["project_id"] == "no-tests-001"
+    assert data["execution_status"] == "no_tests"
+    assert data["execution_summary"]["total"] == 0
+    assert data["execution_summary"]["passed"] == 0
+    assert len(data["results"]) == 0

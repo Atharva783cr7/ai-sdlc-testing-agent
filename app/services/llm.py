@@ -299,6 +299,43 @@ class GeminiService:
                         "priority": "Medium",
                         "source": "ai_inference",
                     },
+                    {
+                        "test_case_id": "TC-007",
+                        "title": "Verify user login via web UI",
+                        "test_type": "ui",
+                        "test_category": "happy_path",
+                        "requirement_id": "REQ-001",
+                        "risk_id": None,
+                        "design_component": "Web UI",
+                        "code_target": "LoginPage",
+                        "description": "Verify that a registered user can log in through the web UI and reach the dashboard.",
+                        "preconditions": [
+                            "Web application is deployed to staging",
+                            "Test user 'testuser' exists with known credentials",
+                        ],
+                        "steps": [
+                            "Open the login page",
+                            "Enter username and password",
+                            "Click the login button",
+                            "Verify dashboard loads"
+                        ],
+                        "assertions": [
+                            "Dashboard main container is present",
+                            "Welcome message contains username"
+                        ],
+                        "expected_result": "User is authenticated and dashboard is displayed.",
+                        "ui_actions": [
+                            {"action": "open", "url": "https://example.local/login"},
+                            {"action": "input", "selector": "#username", "selector_strategy": "css", "value": "testuser"},
+                            {"action": "input", "selector": "#password", "selector_strategy": "css", "value": "s3cret"},
+                            {"action": "click", "selector": "#login", "selector_strategy": "css"},
+                            {"action": "wait", "selector": "#dashboard", "selector_strategy": "css", "condition": "visible", "timeout": 10}
+                        ],
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-001"],
+                        "priority": "High",
+                        "source": "ai_inference",
+                    },
                 ]
             }
             return response_schema.model_validate(data)

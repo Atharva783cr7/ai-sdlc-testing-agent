@@ -1,8 +1,17 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
-from app.models.schemas import TestingStartRequest, TestingStartResponse, IntelligenceSummary, TestDesignSummary
+from app.models.schemas import (
+    TestingStartRequest,
+    TestingStartResponse,
+    IntelligenceSummary,
+    TestDesignSummary,
+    TestExecutionResponse,
+    TestExecutionResult,
+    TestExecutionSummary,
+)
 from app.models.state import TestingState
 from app.workflow.testing_workflow import testing_workflow
+from app.execution.controller import ExecutionController
 
 router = APIRouter(prefix="/testing", tags=["Testing"])
 logger = logging.getLogger(__name__)
@@ -86,3 +95,126 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Testing agent workflow execution failed: {str(e)}"
         )
+
+
+@router.post("/execute", response_model=TestExecutionResponse, status_code=status.HTTP_200_OK)
+def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecutionResponse:
+    """Run the full workflow (Phases 1-3) and execute Phase 3 generated test cases.
+
+    This endpoint invokes the existing LangGraph workflow to produce the
+    `test_cases` artifacts and then runs them through the single
+    `ExecutionController`. Execution is simulated by the Phase 4 modules and
+    clearly labeled as simulation; this endpoint does not perform real
+    execution against external systems.
+    """
+    logger.info(f"Received execute request for project ID: {payload.project_id}")
+
+    # Prepare initial state similar to /start
+    initial_state: TestingState = {
+        "project_id": payload.project_id,
+        "srs": payload.srs,
+        "sdd": payload.sdd,
+        "source_code": payload.source_code,
+        "api_docs": payload.api_docs,
+        "database_schema": payload.database_schema,
+        "test_data": payload.test_data,
+        "environment": payload.environment,
+        "validation_status": "pending",
+        "validation_errors": [],
+        "context": {},
+        "workflow_status": "pending",
+        "human_feedback": None,
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
+    }
+
+    try:
+        final_state = testing_workflow.invoke(initial_state)
+
+        if final_state.get("validation_status") != "passed":
+            # Do not attempt execution if validation failed
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Input validation failed; cannot execute test cases.", "validation_errors": final_state.get("validation_errors")}
+            )
+
+        # Extract test cases from final_state; they may be Pydantic models or dicts
+        raw_cases = final_state.get("test_cases") or []
+
+        # If no executable test cases were generated, record a non-error execution state
+        if not raw_cases:
+            final_state["execution_status"] = "no_tests"
+            final_state["execution_results"] = []
+            final_state["execution_summary"] = {"total": 0, "pass": 0, "fail": 0, "error": 0, "skipped": 0}
+
+            summary = TestExecutionSummary(total=0, passed=0, failed=0, errors=0, skipped=0)
+            response = TestExecutionResponse(
+                project_id=final_state.get("project_id"),
+                execution_status=final_state.get("execution_status"),
+                execution_summary=summary,
+                results=[],
+            )
+            return response
+
+        # Normalize to plain dicts
+        normalized_cases = []
+        for c in raw_cases:
+            try:
+                # Pydantic BaseModel have model_dump
+                if hasattr(c, "model_dump"):
+                    normalized_cases.append(c.model_dump())
+                else:
+                    normalized_cases.append(dict(c))
+            except Exception:
+                # Fallback: ensure it's a dict-like
+                normalized_cases.append(c)
+
+        controller = ExecutionController()
+        exec_report = controller.execute_test_suite(normalized_cases)
+
+        # Persist execution results back into the workflow state for observability
+        # Ensure final_state stores plain serializable structures
+        final_state["execution_status"] = "completed"
+        final_state["execution_results"] = exec_report.get("results", [])
+        final_state["execution_summary"] = exec_report.get("summary", {})
+
+        # Map summary keys
+        summary_map = exec_report.get("summary", {})
+        summary = TestExecutionSummary(
+            total=summary_map.get("total", 0),
+            passed=summary_map.get("pass", 0),
+            failed=summary_map.get("fail", 0),
+            errors=summary_map.get("error", 0),
+            skipped=summary_map.get("skipped", 0),
+        )
+
+        results = []
+        for r in exec_report.get("results", []):
+            results.append(TestExecutionResult(
+                test_case_id=r.get("test_case_id"),
+                status=r.get("status"),
+                details=r.get("details"),
+                module=r.get("module"),
+            ))
+
+        response = TestExecutionResponse(
+            project_id=final_state.get("project_id"),
+            execution_status=final_state.get("execution_status"),
+            execution_summary=summary,
+            results=results,
+        )
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Execution endpoint failed: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

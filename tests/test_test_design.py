@@ -142,6 +142,18 @@ def test_gemini_mock_test_data_wrapper():
     assert wrapper.generated_test_data[0].data_id.startswith("TD-")
 
 
+def test_gemini_mock_includes_ui_test_case():
+    wrapper = GeminiService()._generate_mock_output(TestCasesWrapper)
+    ui_cases = [c for c in wrapper.test_cases if c.test_type == "ui"]
+    assert len(ui_cases) >= 1
+    ui_case = ui_cases[0]
+    assert hasattr(ui_case, "ui_actions")
+    assert isinstance(ui_case.ui_actions, list)
+    assert len(ui_case.ui_actions) >= 1
+    # First action should include an action key (e.g., open)
+    assert "action" in ui_case.ui_actions[0]
+
+
 # --- Validator unit tests ---
 
 def test_validate_rejects_invalid_requirement_id():

@@ -69,6 +69,14 @@ class TestCaseInfo(BaseModel):
     priority: TestPriority = Field(..., description="Execution priority")
     source: SourceType = Field(..., description="Source of this test specification")
 
+    # Optional structured UI actions for Phase 4 Selenium executor.
+    # Each action should be a structured dict describing `action`, selector strategy,
+    # selector/value, and optional condition/timeout where applicable.
+    ui_actions: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Optional structured UI actions for Selenium executor (open/click/input/wait/select)",
+    )
+
 
 class TestScenarioInfo(BaseModel):
     __test__ = False
@@ -152,3 +160,7 @@ class TestingState(TypedDict):
     generated_test_data: List[GeneratedTestDataInfo]
     traceability: Optional[TraceabilityMap]
     test_design_warnings: List[str]
+    # Phase 4 execution fields
+    execution_status: Optional[str]
+    execution_results: List[Dict[str, Any]]
+    execution_summary: Optional[Dict[str, Any]]
