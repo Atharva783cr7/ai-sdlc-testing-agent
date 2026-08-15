@@ -43,6 +43,80 @@ class TestStrategyInfo(BaseModel):
     source: SourceType = Field(..., description="Source of the strategy compilation")
 
 
+TestType = Literal["unit", "integration", "api", "ui", "security", "regression"]
+TestCategory = Literal["positive", "negative", "boundary", "edge", "happy_path"]
+TestDataCategory = Literal["valid", "invalid", "boundary", "edge"]
+TestPriority = Literal["High", "Medium", "Low"]
+
+
+class TestCaseInfo(BaseModel):
+    __test__ = False
+    test_case_id: str = Field(..., description="Unique test case ID (e.g. TC-001)")
+    title: str = Field(..., description="Short descriptive title")
+    test_type: TestType = Field(..., description="Type of test")
+    test_category: TestCategory = Field(..., description="Category of test")
+    requirement_id: str = Field(..., description="Linked requirement ID")
+    risk_id: Optional[str] = Field(None, description="Linked risk ID if applicable")
+    design_component: str = Field(..., description="Design component under test")
+    code_target: str = Field(..., description="Function, endpoint, or module target")
+    description: str = Field(..., description="Detailed test description")
+    preconditions: List[str] = Field(default_factory=list, description="Preconditions before execution")
+    steps: List[str] = Field(default_factory=list, description="Ordered test steps")
+    assertions: List[str] = Field(default_factory=list, description="Verification assertions")
+    expected_result: str = Field(..., description="Expected outcome")
+    mocks_required: List[str] = Field(default_factory=list, description="Mocks or stubs required")
+    test_data_ids: List[str] = Field(default_factory=list, description="Linked test data IDs")
+    priority: TestPriority = Field(..., description="Execution priority")
+    source: SourceType = Field(..., description="Source of this test specification")
+
+
+class TestScenarioInfo(BaseModel):
+    __test__ = False
+    scenario_id: str = Field(..., description="Unique scenario ID (e.g. SCN-001)")
+    title: str = Field(..., description="Scenario title")
+    description: str = Field(..., description="Business scenario description")
+    flow_steps: List[str] = Field(default_factory=list, description="Ordered business flow steps")
+    requirement_ids: List[str] = Field(default_factory=list, description="Linked requirement IDs")
+    related_test_case_ids: List[str] = Field(default_factory=list, description="Related test case IDs")
+    source: SourceType = Field(..., description="Source of this scenario")
+
+
+class TestDataField(BaseModel):
+    __test__ = False
+    name: str = Field(..., description="Field name")
+    value: Any = Field(..., description="Field value")
+    description: str = Field(..., description="Why this value is meaningful for the test")
+
+
+class GeneratedTestDataInfo(BaseModel):
+    data_id: str = Field(..., description="Unique test data ID (e.g. TD-001)")
+    category: TestDataCategory = Field(..., description="Data category")
+    description: str = Field(..., description="Purpose of this test data")
+    linked_test_case_ids: List[str] = Field(default_factory=list, description="Test cases using this data")
+    fields: List[TestDataField] = Field(default_factory=list, description="Structured field values")
+    source: SourceType = Field(..., description="Source of this test data")
+
+
+class TraceabilityEntry(BaseModel):
+    requirement_id: str = Field(..., description="Requirement ID")
+    risk_id: Optional[str] = Field(None, description="Risk ID if applicable")
+    design_component: Optional[str] = Field(None, description="Design component")
+    code_target: Optional[str] = Field(None, description="Code target")
+    scenario_id: str = Field(..., description="Linked scenario ID")
+    test_case_id: str = Field(..., description="Linked test case ID")
+    test_data_ids: List[str] = Field(default_factory=list, description="Linked test data IDs")
+    test_result_id: Optional[str] = Field(None, description="Phase 4: test result ID")
+    defect_id: Optional[str] = Field(None, description="Phase 4: defect ID")
+
+
+class TraceabilityMap(BaseModel):
+    entries: List[TraceabilityEntry] = Field(default_factory=list, description="Traceability chain entries")
+    uncovered_requirements: List[str] = Field(default_factory=list, description="Requirements without test cases")
+    orphaned_test_cases: List[str] = Field(default_factory=list, description="Test cases without traceability")
+    orphaned_test_data: List[str] = Field(default_factory=list, description="Test data not linked to any case")
+    source: SourceType = Field(default="ai_inference", description="Source of traceability mapping")
+
+
 class TestingState(TypedDict):
     __test__ = False  # Prevent Pytest from trying to collect this as a test class
 
@@ -71,3 +145,10 @@ class TestingState(TypedDict):
     change_impact: Optional[ChangeImpactInfo]
     coverage: Optional[CoverageInfo]
     test_strategy: Optional[TestStrategyInfo]
+
+    # Phase 3 output fields
+    test_cases: List[TestCaseInfo]
+    test_scenarios: List[TestScenarioInfo]
+    generated_test_data: List[GeneratedTestDataInfo]
+    traceability: Optional[TraceabilityMap]
+    test_design_warnings: List[str]

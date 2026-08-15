@@ -33,7 +33,14 @@ def test_workflow_successful_execution():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+
+        # Initialize Phase 3 fields
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
 
     result = testing_workflow.invoke(initial_state)
@@ -55,7 +62,12 @@ def test_workflow_successful_execution():
     assert result["coverage"] is not None
     assert result["test_strategy"] is not None
 
-    # Assert correct type validation on output models
+    # Assert Phase 3 test design fields are populated
+    assert len(result["test_cases"]) > 0
+    assert len(result["test_scenarios"]) > 0
+    assert len(result["generated_test_data"]) > 0
+    assert result["traceability"] is not None
+    # Assert correct type validation on Phase 2 output models
     assert result["requirements"][0].id == "REQ-001"
     assert result["risks"][0].risk_id == "RSK-001"
     assert result["coverage"].coverage_percentage == 66.7
@@ -137,6 +149,15 @@ def test_api_start_success():
     assert data["intelligence"]["risks"][0]["severity"] in ["High", "Medium", "Low"]
     assert data["intelligence"]["test_strategy"]["source"] == "ai_inference"
 
+    # Verify Phase 3 test_design field
+    assert "test_design" in data
+    assert data["test_design"] is not None
+    assert len(data["test_design"]["test_cases"]) > 0
+    assert len(data["test_design"]["test_scenarios"]) > 0
+    assert len(data["test_design"]["generated_test_data"]) > 0
+    assert data["test_design"]["traceability"] is not None
+    assert data["test_design"]["test_cases"][0]["test_case_id"] == "TC-001"
+
 
 def test_api_start_validation_failure():
     """
@@ -160,6 +181,7 @@ def test_api_start_validation_failure():
     
     # Intelligence container must be null/None on validation failure
     assert data["intelligence"] is None
+    assert data["test_design"] is None
 
 
 def test_api_start_malformed_request():

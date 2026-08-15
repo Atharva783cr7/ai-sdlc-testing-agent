@@ -36,7 +36,12 @@ graph TD
     RiskAnalyzer --> ImpactAnalyzer[Change Impact Analyzer]
     ImpactAnalyzer --> CovAnalyzer[Coverage Analyzer]
     CovAnalyzer --> StrategyPlanner[Test Strategy Planner]
-    StrategyPlanner --> END
+    StrategyPlanner --> TCG[Test Case Generator]
+    TCG --> SCN[Scenario Builder]
+    SCN --> NBC[Negative/Boundary Generator]
+    NBC --> TDG[Test Data Generator]
+    TDG --> TRC[Traceability Mapper]
+    TRC --> END
 ```
 
 ---
@@ -56,7 +61,12 @@ testing-agent/
 │   │   ├── risk_analyzer.py        # Node: System Risk Assessor
 │   │   ├── impact_analyzer.py      # Node: Regression Impact Analyzer
 │   │   ├── coverage_analyzer.py    # Node: Ingestion/Requirement Coverage
-│   │   └── strategy_planner.py     # Node: Test Strategy Planner
+│   │   ├── strategy_planner.py     # Node: Test Strategy Planner
+│   │   ├── test_case_generator.py  # Node: Test Case Generator (Phase 3)
+│   │   ├── scenario_builder.py     # Node: Scenario Builder (Phase 3)
+│   │   ├── negative_boundary_generator.py # Node: Negative/Boundary Generator (Phase 3)
+│   │   ├── test_data_generator.py  # Node: Test Data Generator (Phase 3)
+│   │   └── traceability_mapper.py  # Node: Traceability Mapper (Phase 3)
 │   │
 │   ├── api/
 │   │   └── testing.py              # API Endpoint: /testing/start
@@ -69,11 +79,19 @@ testing-agent/
 │   │   └── schemas.py              # Pydantic HTTP request/response schemas
 │   │
 │   └── services/
-│       └── llm.py                  # GeminiService using google-genai SDK
+│       ├── llm.py                  # GeminiService using google-genai SDK
+│       └── test_design_validator.py # Phase 3 validation & traceability logic
+│
+├── frontend/                       # Canonical dashboard (Phase 3 UI)
+│   ├── index.html
+│   ├── app.js
+│   ├── style.css
+│   └── server.py                   # Static server + /api/* proxy → backend :8085
 │
 ├── tests/
 │   ├── test_validation.py          # Validator unit tests
 │   ├── test_intelligence.py        # Intelligence nodes unit tests
+│   ├── test_test_design.py         # Phase 3 test design node & validator tests
 │   └── test_workflow.py            # LangGraph workflow & API integration tests
 │
 ├── requirements.txt                # Dependency specifications
@@ -135,6 +153,37 @@ To run unit and integration tests:
 ```bash
 pytest -v
 ```
+
+---
+
+## Phases
+
+### Phase 1 — Input Validation & Context Loading
+Validates the required project artifacts (`project_id`, `srs`, `sdd`, `source_code`) and normalizes them into a structured testing context consumed by the intelligence pipeline.
+
+### Phase 2 — Testing Intelligence
+Runs the analysis pipeline (Requirements, Risks, Change Impact, Coverage, Test Strategy) using the Gemini LLM (or deterministic mocks) and returns an `intelligence` summary.
+
+### Phase 3 — Test Design (Implemented)
+- **Test Case Generator** — Produces structured positive/happy-path/core test case specifications.
+- **Scenario Builder** — Builds end-to-end business flow scenarios linked to requirements and test cases.
+- **Negative/Boundary Generator** — Adds negative, boundary, and edge test case specifications.
+- **Test Data Generator** — Generates structured test data records linked to test cases.
+- **Traceability Mapper** — Deterministically builds `Requirement → Risk → Design → Code → Scenario → Test Case → Test Data` traceability chains, reporting uncovered requirements and orphaned artifacts.
+- **Output Container:** `test_design` in the API response:
+  ```json
+  {
+    "test_cases": [],
+    "test_scenarios": [],
+    "generated_test_data": [],
+    "traceability": {},
+    "warnings": []
+  }
+  ```
+- **Frontend Dashboard:** The canonical dashboard (`testing-agent/frontend/`) renders real Phase 3 output via four result tabs — **Test Cases** (with type/priority/category filters), **Scenarios**, **Test Data**, and **Traceability** — and lights up the `TESTS` workflow node on completion.
+- **Knobs:** `MAX_TEST_CASES` (default 50) caps the generated test case count; `LLM_MODE=mock` returns high-fidelity deterministic fixtures.
+
+> Phase 4 (execution of the generated tests) is not yet implemented.
 
 ---
 

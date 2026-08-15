@@ -5,7 +5,11 @@ from app.models.state import (
     RiskInfo,
     ChangeImpactInfo,
     CoverageInfo,
-    TestStrategyInfo
+    TestStrategyInfo,
+    TestCaseInfo,
+    TestScenarioInfo,
+    GeneratedTestDataInfo,
+    TraceabilityMap,
 )
 
 class TestingStartRequest(BaseModel):
@@ -48,12 +52,24 @@ class IntelligenceSummary(BaseModel):
     coverage: Optional[CoverageInfo] = Field(default=None, description="Requirements mapping coverage details")
     test_strategy: Optional[TestStrategyInfo] = Field(default=None, description="Recommended test execution blueprint")
 
+class TestDesignSummary(BaseModel):
+    """
+    Summary of Phase 3 test design and data intelligence artifacts.
+    """
+    test_cases: List[TestCaseInfo] = Field(default_factory=list, description="Structured test case specifications")
+    test_scenarios: List[TestScenarioInfo] = Field(default_factory=list, description="Business test scenarios")
+    generated_test_data: List[GeneratedTestDataInfo] = Field(default_factory=list, description="Generated test data linked to test cases")
+    traceability: Optional[TraceabilityMap] = Field(default=None, description="Requirement-to-test traceability map")
+    warnings: List[str] = Field(default_factory=list, description="Test design validation warnings")
+
+
 class TestingStartResponse(BaseModel):
     """
-    Response model returning the results of the Testing Agent Phase 2 execution.
+    Response model returning the results of the Testing Agent workflow execution.
     """
     project_id: str
     validation_status: str
     validation_errors: List[str]
     workflow_status: str
     intelligence: Optional[IntelligenceSummary] = Field(default=None, description="Encapsulated quality and testing intelligence report")
+    test_design: Optional[TestDesignSummary] = Field(default=None, description="Phase 3 test design and data intelligence")

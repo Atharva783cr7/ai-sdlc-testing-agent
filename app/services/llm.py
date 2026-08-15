@@ -9,7 +9,10 @@ from app.models.state import (
     RiskInfo,
     ChangeImpactInfo,
     CoverageInfo,
-    TestStrategyInfo
+    TestStrategyInfo,
+    TestCaseInfo,
+    TestScenarioInfo,
+    GeneratedTestDataInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,22 @@ class RequirementsWrapper(BaseModel):
 
 class RisksWrapper(BaseModel):
     risks: List[RiskInfo] = Field(..., description="List of identified software and design risks")
+
+class TestCasesWrapper(BaseModel):
+    __test__ = False
+    test_cases: List[TestCaseInfo] = Field(..., description="List of structured test case specifications")
+
+class NegativeBoundaryTestCasesWrapper(BaseModel):
+    __test__ = False
+    test_cases: List[TestCaseInfo] = Field(..., description="List of negative/boundary/edge test case specifications")
+
+class TestScenariosWrapper(BaseModel):
+    __test__ = False
+    test_scenarios: List[TestScenarioInfo] = Field(..., description="List of business test scenarios")
+
+class TestDataWrapper(BaseModel):
+    __test__ = False
+    generated_test_data: List[GeneratedTestDataInfo] = Field(..., description="List of generated test data records")
 
 class GeminiService:
     """
@@ -187,6 +206,291 @@ class GeminiService:
                 "tools": ["pytest", "httpx"],
                 "environments": ["staging"],
                 "source": "ai_inference"
+            }
+            return response_schema.model_validate(data)
+
+        elif response_schema is TestCasesWrapper:
+            # Check prompt context via a simple heuristic: negative/boundary mock uses different IDs
+            # Default mock returns core positive/happy_path cases
+            data = {
+                "test_cases": [
+                    {
+                        "test_case_id": "TC-001",
+                        "title": "Accept valid temperature telemetry payload",
+                        "test_type": "api",
+                        "test_category": "happy_path",
+                        "requirement_id": "REQ-001",
+                        "risk_id": "RSK-001",
+                        "design_component": "Telemetry Collector",
+                        "code_target": "POST /telemetry",
+                        "description": "Verify the ingestion API accepts a valid sensor reading and persists it.",
+                        "preconditions": [
+                            "Telemetry Collector service is running in staging",
+                            "Valid sensor device is registered",
+                        ],
+                        "steps": [
+                            "Send POST /telemetry with a valid temperature reading",
+                            "Verify HTTP 201 response",
+                            "Query telemetry store for the new record",
+                        ],
+                        "assertions": [
+                            "Response status is 201",
+                            "Response body contains sensor_id and timestamp",
+                            "Record exists in telemetry table",
+                        ],
+                        "expected_result": "Valid telemetry reading is accepted and stored.",
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-001"],
+                        "priority": "High",
+                        "source": "ai_inference",
+                    },
+                    {
+                        "test_case_id": "TC-002",
+                        "title": "Trigger alert when threshold exceeded",
+                        "test_type": "integration",
+                        "test_category": "positive",
+                        "requirement_id": "REQ-002",
+                        "risk_id": "RSK-002",
+                        "design_component": "Alert Notification Engine",
+                        "code_target": "AlertTrigger.evaluate_threshold",
+                        "description": "Verify alert is generated when reading exceeds configured HVAC threshold.",
+                        "preconditions": [
+                            "Alert threshold configured for test room",
+                            "Notification queue is available",
+                        ],
+                        "steps": [
+                            "Submit telemetry reading above threshold",
+                            "Wait for alert evaluation pipeline",
+                            "Check alert dispatch queue",
+                        ],
+                        "assertions": [
+                            "Alert record created with severity matching threshold breach",
+                            "Notification event published to alert queue",
+                        ],
+                        "expected_result": "Threshold breach produces a timely alert event.",
+                        "mocks_required": ["notification_dispatcher"],
+                        "test_data_ids": ["TD-002"],
+                        "priority": "High",
+                        "source": "ai_inference",
+                    },
+                    {
+                        "test_case_id": "TC-003",
+                        "title": "Verify telemetry collector microservice isolation",
+                        "test_type": "integration",
+                        "test_category": "positive",
+                        "requirement_id": "REQ-003",
+                        "risk_id": None,
+                        "design_component": "Telemetry Collector",
+                        "code_target": "TelemetryCollectorService",
+                        "description": "Verify telemetry collector operates as an independent microservice.",
+                        "preconditions": ["Microservice deployment is active"],
+                        "steps": [
+                            "Stop dependent services except Telemetry Collector",
+                            "Send valid telemetry payload",
+                            "Verify ingestion succeeds independently",
+                        ],
+                        "assertions": [
+                            "Telemetry Collector accepts payload without other services",
+                            "Service health endpoint returns healthy",
+                        ],
+                        "expected_result": "Telemetry Collector functions independently as a microservice.",
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-001"],
+                        "priority": "Medium",
+                        "source": "ai_inference",
+                    },
+                ]
+            }
+            return response_schema.model_validate(data)
+
+        elif response_schema is TestScenariosWrapper:
+            data = {
+                "test_scenarios": [
+                    {
+                        "scenario_id": "SCN-001",
+                        "title": "Threshold breach alert flow",
+                        "description": "End-to-end business flow from sensor reading to alert generation.",
+                        "flow_steps": [
+                            "Sensor publishes temperature reading",
+                            "Telemetry Collector ingests reading",
+                            "Threshold evaluation detects breach",
+                            "Alert Notification Engine generates alert",
+                        ],
+                        "requirement_ids": ["REQ-001", "REQ-002"],
+                        "related_test_case_ids": ["TC-001", "TC-002"],
+                        "source": "ai_inference",
+                    },
+                    {
+                        "scenario_id": "SCN-002",
+                        "title": "Independent telemetry microservice operation",
+                        "description": "Verify telemetry collector operates independently per architecture.",
+                        "flow_steps": [
+                            "Deploy Telemetry Collector microservice",
+                            "Send telemetry payload",
+                            "Verify independent ingestion",
+                        ],
+                        "requirement_ids": ["REQ-003"],
+                        "related_test_case_ids": ["TC-003"],
+                        "source": "ai_inference",
+                    },
+                ]
+            }
+            return response_schema.model_validate(data)
+
+        elif response_schema is TestDataWrapper:
+            data = {
+                "generated_test_data": [
+                    {
+                        "data_id": "TD-001",
+                        "category": "valid",
+                        "description": "Normal room temperature reading within acceptable range for REQ-001.",
+                        "linked_test_case_ids": ["TC-001", "TC-003"],
+                        "fields": [
+                            {
+                                "name": "sensor_id",
+                                "value": "sensor-room-101",
+                                "description": "Registered HVAC room sensor",
+                            },
+                            {
+                                "name": "temperature_c",
+                                "value": 22.5,
+                                "description": "Normal operating temperature",
+                            },
+                            {
+                                "name": "timestamp",
+                                "value": "2026-08-15T10:00:00Z",
+                                "description": "Recent valid reading time",
+                            },
+                        ],
+                        "source": "ai_inference",
+                    },
+                    {
+                        "data_id": "TD-002",
+                        "category": "boundary",
+                        "description": "Reading exactly at configured alert threshold for REQ-002.",
+                        "linked_test_case_ids": ["TC-002"],
+                        "fields": [
+                            {
+                                "name": "sensor_id",
+                                "value": "sensor-room-101",
+                                "description": "Same sensor with threshold configured",
+                            },
+                            {
+                                "name": "temperature_c",
+                                "value": 30.0,
+                                "description": "Exact threshold boundary value",
+                            },
+                            {
+                                "name": "threshold_c",
+                                "value": 30.0,
+                                "description": "Configured alert threshold",
+                            },
+                        ],
+                        "source": "ai_inference",
+                    },
+                    {
+                        "data_id": "TD-003",
+                        "category": "invalid",
+                        "description": "Malformed sensor identifier for negative API validation test.",
+                        "linked_test_case_ids": ["TC-004"],
+                        "fields": [
+                            {
+                                "name": "sensor_id",
+                                "value": "!!!invalid!!!",
+                                "description": "Violates sensor_id format rules",
+                            },
+                            {
+                                "name": "temperature_c",
+                                "value": 22.5,
+                                "description": "Otherwise valid reading payload",
+                            },
+                        ],
+                        "source": "ai_inference",
+                    },
+                ]
+            }
+            return response_schema.model_validate(data)
+
+        elif response_schema is NegativeBoundaryTestCasesWrapper:
+            data = {
+                "test_cases": [
+                    {
+                        "test_case_id": "TC-004",
+                        "title": "Reject telemetry with invalid sensor_id format",
+                        "test_type": "api",
+                        "test_category": "negative",
+                        "requirement_id": "REQ-001",
+                        "risk_id": None,
+                        "design_component": "Telemetry Collector",
+                        "code_target": "POST /telemetry",
+                        "description": "Verify API rejects malformed sensor identifiers per ingestion validation rules.",
+                        "preconditions": ["Telemetry Collector service is running"],
+                        "steps": [
+                            "Send POST /telemetry with invalid sensor_id",
+                            "Capture response",
+                        ],
+                        "assertions": [
+                            "Response status is 422",
+                            "Error message identifies invalid sensor_id",
+                        ],
+                        "expected_result": "Invalid sensor_id is rejected without persisting data.",
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-003"],
+                        "priority": "Medium",
+                        "source": "ai_inference",
+                    },
+                    {
+                        "test_case_id": "TC-005",
+                        "title": "Handle telemetry at exact threshold boundary",
+                        "test_type": "unit",
+                        "test_category": "boundary",
+                        "requirement_id": "REQ-002",
+                        "risk_id": "RSK-002",
+                        "design_component": "Alert Notification Engine",
+                        "code_target": "AlertTrigger.evaluate_threshold",
+                        "description": "Verify alert behavior when reading equals exact threshold boundary.",
+                        "preconditions": ["Threshold configured at 30.0C"],
+                        "steps": [
+                            "Submit reading at exact threshold value",
+                            "Observe alert evaluation result",
+                        ],
+                        "assertions": [
+                            "Alert is triggered at exact boundary per configuration",
+                        ],
+                        "expected_result": "Boundary threshold value triggers alert as configured.",
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-002"],
+                        "priority": "High",
+                        "source": "ai_inference",
+                    },
+                    {
+                        "test_case_id": "TC-006",
+                        "title": "Regression: parse_sensor_reading handles changed parsing logic",
+                        "test_type": "regression",
+                        "test_category": "positive",
+                        "requirement_id": "REQ-001",
+                        "risk_id": "RSK-001",
+                        "design_component": "Telemetry Collector",
+                        "code_target": "parse_sensor_reading",
+                        "description": "Verify modified parse_sensor_reading still accepts previously valid payloads.",
+                        "preconditions": [
+                            "Change metadata indicates telemetry.py was modified",
+                        ],
+                        "steps": [
+                            "Invoke parse_sensor_reading with baseline valid payload",
+                            "Compare parsed output to expected structure",
+                        ],
+                        "assertions": [
+                            "Parser returns normalized reading object",
+                            "No regression in field mapping",
+                        ],
+                        "expected_result": "Changed parser maintains backward compatibility for valid inputs.",
+                        "mocks_required": [],
+                        "test_data_ids": ["TD-001"],
+                        "priority": "High",
+                        "source": "ai_inference",
+                    },
+                ]
             }
             return response_schema.model_validate(data)
 

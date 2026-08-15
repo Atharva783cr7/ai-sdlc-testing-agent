@@ -55,7 +55,12 @@ def test_requirement_analyzer_node():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = analyze_requirements(state)
@@ -90,7 +95,12 @@ def test_risk_analyzer_node():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = analyze_risks(state)
@@ -123,7 +133,12 @@ def test_change_impact_analyzer_deterministic_short_circuit():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = analyze_impact(state)
@@ -162,7 +177,12 @@ def test_change_impact_analyzer_with_changes():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = analyze_impact(state)
@@ -195,7 +215,12 @@ def test_coverage_analyzer_requirement_coverage():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = analyze_coverage(state)
@@ -228,7 +253,12 @@ def test_test_strategy_planner_node():
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
     
     result = plan_strategy(state)

@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException, status
-from app.models.schemas import TestingStartRequest, TestingStartResponse, IntelligenceSummary
+from app.models.schemas import TestingStartRequest, TestingStartResponse, IntelligenceSummary, TestDesignSummary
 from app.models.state import TestingState
 from app.workflow.testing_workflow import testing_workflow
 
@@ -36,7 +36,14 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
         "risks": [],
         "change_impact": None,
         "coverage": None,
-        "test_strategy": None
+        "test_strategy": None,
+
+        # Initialize Phase 3 fields
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
     }
 
     try:
@@ -45,6 +52,7 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
 
         # Assemble IntelligenceSummary if validation passed and workflow finished
         intelligence = None
+        test_design = None
         if final_state.get("validation_status") == "passed":
             intelligence = IntelligenceSummary(
                 requirements=final_state.get("requirements") or [],
@@ -53,6 +61,13 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
                 coverage=final_state.get("coverage"),
                 test_strategy=final_state.get("test_strategy")
             )
+            test_design = TestDesignSummary(
+                test_cases=final_state.get("test_cases") or [],
+                test_scenarios=final_state.get("test_scenarios") or [],
+                generated_test_data=final_state.get("generated_test_data") or [],
+                traceability=final_state.get("traceability"),
+                warnings=final_state.get("test_design_warnings") or [],
+            )
 
         # Build response schema from the resulting state
         response = TestingStartResponse(
@@ -60,7 +75,8 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
             validation_status=final_state["validation_status"],
             validation_errors=final_state["validation_errors"],
             workflow_status=final_state["workflow_status"],
-            intelligence=intelligence
+            intelligence=intelligence,
+            test_design=test_design,
         )
         return response
 
