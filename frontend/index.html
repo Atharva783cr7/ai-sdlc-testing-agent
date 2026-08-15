@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Agent - AI Quality Control Center</title>
+    <!-- Google Fonts: Outfit and JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="command-center-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i data-lucide="shield-check" class="brand-icon"></i>
+                <span>AI SDLC</span>
+            </div>
+            
+            <div class="sidebar-divider"></div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="file-text"></i>
+                    <span>Requirement</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="trello"></i>
+                    <span>Design</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="code"></i>
+                    <span>Development</span>
+                </a>
+                <a href="#" class="nav-item active">
+                    <span class="active-indicator">▶</span>
+                    <i data-lucide="cpu" class="cyan-glow-icon"></i>
+                    <span>TESTING</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="rocket"></i>
+                    <span>Deployment</span>
+                </a>
+                
+                <div class="sidebar-divider"></div>
+                
+                <div class="sidebar-section-title">Testing Operations</div>
+                <a href="#" class="nav-subitem active">
+                    <i data-lucide="brain-circuit"></i>
+                    <span>Testing Intelligence</span>
+                </a>
+                <a href="#" class="nav-subitem" id="nav-test-execution">
+                    <i data-lucide="play-circle"></i>
+                    <span>Test Execution</span>
+                    <span class="phase3-tag tag-amber">PH 3</span>
+                </a>
+                <a href="#" class="nav-subitem">
+                    <i data-lucide="clipboard-check"></i>
+                    <span>Results</span>
+                </a>
+                <a href="#" class="nav-subitem">
+                    <i data-lucide="key-round"></i>
+                    <span>Quality Gate</span>
+                </a>
+                <a href="#" class="nav-subitem">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Reports</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <div class="main-content">
+            
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-title-area">
+                    <h1>TESTING AGENT</h1>
+                    <span class="subtitle">AI QUALITY CONTROL CENTER</span>
+                </div>
+                <div class="header-controls">
+                    <div id="server-status" class="status-indicator checking">
+                        <span class="status-dot"></span>
+                        <span class="status-label">Checking Connection...</span>
+                    </div>
+                    <button type="button" id="btn-start-testing" class="btn btn-primary btn-glow">
+                        <i data-lucide="play"></i> START TESTING
+                    </button>
+                </div>
+            </header>
+
+            <!-- WORKFLOW VISUALIZER -->
+            <section class="workflow-visualizer-section">
+                <div class="section-title-sm">
+                    <i data-lucide="git-commit"></i>
+                    <span>LANGGRAPH AGENT WORKFLOW PIPELINE</span>
+                </div>
+                <div class="pipeline-container">
+                    <!-- Node 1: INPUT -->
+                    <div class="pipeline-node" id="node-input">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="file-input"></i>
+                        </div>
+                        <span class="node-name">INPUT</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-1">➔</div>
+
+                    <!-- Node 2: CONTEXT -->
+                    <div class="pipeline-node" id="node-context">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="box"></i>
+                        </div>
+                        <span class="node-name">CONTEXT</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-2">➔</div>
+
+                    <!-- Node 3: REQUIREMENTS -->
+                    <div class="pipeline-node" id="node-requirements">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="list-checks"></i>
+                        </div>
+                        <span class="node-name">REQUIREMENTS</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-3">➔</div>
+
+                    <!-- Node 4: RISK -->
+                    <div class="pipeline-node" id="node-risk">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="alert-triangle"></i>
+                        </div>
+                        <span class="node-name">RISK</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-4">➔</div>
+
+                    <!-- Node 5: IMPACT -->
+                    <div class="pipeline-node" id="node-impact">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="git-compare"></i>
+                        </div>
+                        <span class="node-name">IMPACT</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-5">➔</div>
+
+                    <!-- Node 6: COVERAGE -->
+                    <div class="pipeline-node" id="node-coverage">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="gauge"></i>
+                        </div>
+                        <span class="node-name">COVERAGE</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-6">➔</div>
+
+                    <!-- Node 7: STRATEGY -->
+                    <div class="pipeline-node" id="node-strategy">
+                        <div class="node-inner">
+                            <span class="pulse-ring"></span>
+                            <i data-lucide="compass"></i>
+                        </div>
+                        <span class="node-name">STRATEGY</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-7">➔</div>
+
+                    <!-- Node 8: TESTS -->
+                    <div class="pipeline-node future-node" id="node-tests">
+                        <div class="node-inner">
+                            <i data-lucide="terminal"></i>
+                            <span class="ph-badge">PH 3</span>
+                        </div>
+                        <span class="node-name">TESTS</span>
+                    </div>
+                    <div class="pipeline-arrow future-arrow" id="arrow-8">➔</div>
+
+                    <!-- Node 9: QUALITY GATE -->
+                    <div class="pipeline-node future-node" id="node-quality_gate">
+                        <div class="node-inner">
+                            <i data-lucide="unlocked"></i>
+                            <span class="ph-badge">PH 3</span>
+                        </div>
+                        <span class="node-name">QUALITY GATE</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WORKSPACE LAYOUT GRID -->
+            <div class="dashboard-grid">
+                
+                <!-- LEFT COLUMN: INPUT PARAMETERS -->
+                <div class="grid-column">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i data-lucide="sliders-horizontal"></i>
+                                <span>SCOPE CONFIGURATION</span>
+                            </div>
+                            <div class="preset-selector">
+                                <label for="preset-select">Preset Spec:</label>
+                                <select id="preset-select">
+                                    <option value="smart-building">Smart Building Telemetry Server</option>
+                                    <option value="auth-service">Auth & Access Control Service</option>
+                                    <option value="empty">Empty Project (Clear Form)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Form vs JSON tabs -->
+                        <div class="tab-selectors">
+                            <button id="tab-visual" class="tab-select active">
+                                <i data-lucide="edit"></i> Visual Parameters Form
+                            </button>
+                            <button id="tab-json" class="tab-select">
+                                <i data-lucide="code"></i> Raw JSON Payload
+                            </button>
+                        </div>
+
+                        <div class="panel-body">
+                            <!-- Visual parameters Form -->
+                            <form id="visual-form" class="editor-view">
+                                <div class="form-group">
+                                    <label for="project-id">Project Identifier <span class="required">*</span></label>
+                                    <input type="text" id="project-id" placeholder="e.g. smart-building-001" required>
+                                </div>
+
+                                <!-- SRS Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="file-spreadsheet"></i>
+                                        <span>SRS Requirements Metadata</span>
+                                    </div>
+                                    <div class="inline-form-group">
+                                        <div class="sub-form-group flex-2">
+                                            <label for="srs-title">Document Title</label>
+                                            <input type="text" id="srs-title" placeholder="Smart Building SRS">
+                                        </div>
+                                        <div class="sub-form-group flex-1">
+                                            <label for="srs-version">Version</label>
+                                            <input type="text" id="srs-version" placeholder="1.0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Features Description List</label>
+                                        <div id="srs-features-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-srs-feature">
+                                            <i data-lucide="plus-circle"></i> Add Requirement
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- SDD Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="layers"></i>
+                                        <span>Architecture & Design Metadata (SDD)</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sdd-architecture">Architecture Pattern</label>
+                                        <input type="text" id="sdd-architecture" placeholder="e.g. Event-driven, Microservices">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Logical Components</label>
+                                        <div id="sdd-components-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-sdd-component">
+                                            <i data-lucide="plus-circle"></i> Add Component
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Source Code Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="git-pull-request"></i>
+                                        <span>Code Repository & Delta Changes</span>
+                                    </div>
+                                    <div class="inline-form-group">
+                                        <div class="sub-form-group flex-2">
+                                            <label for="code-repository">Repository URL</label>
+                                            <input type="text" id="code-repository" placeholder="github.com/org/repo">
+                                        </div>
+                                        <div class="sub-form-group flex-1">
+                                            <label for="code-language">Language</label>
+                                            <input type="text" id="code-language" placeholder="Python">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Code Repository File Structure</label>
+                                        <div id="code-files-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-code-file">
+                                            <i data-lucide="plus-circle"></i> Add File path
+                                        </button>
+                                    </div>
+                                    <div class="nested-fields">
+                                        <span class="nested-title">Regression Targets</span>
+                                        <div class="form-group">
+                                            <label>Changed Files</label>
+                                            <div id="changed-files-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-changed-file">
+                                                <i data-lucide="plus-circle"></i> Add Changed File
+                                            </button>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Changed Functions</label>
+                                            <div id="changed-functions-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-changed-function">
+                                                <i data-lucide="plus-circle"></i> Add Changed Function
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Optional Configs -->
+                                <div class="optional-section">
+                                    <span class="section-divider-label">OPTIONAL TARGET METADATA</span>
+                                    
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-api">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>Add API Documentation Context</span>
+                                    </div>
+                                    <div id="api-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="api-base-url">Base URL</label>
+                                            <input type="text" id="api-base-url" placeholder="https://api.domain.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Endpoints</label>
+                                            <div id="api-endpoints-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-api-endpoint">
+                                                <i data-lucide="plus-circle"></i> Add Endpoint
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-db">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>Add Database Schema Context</span>
+                                    </div>
+                                    <div id="db-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="db-dialect">Database Dialect</label>
+                                            <input type="text" id="db-dialect" placeholder="PostgreSQL">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tables</label>
+                                            <div id="db-tables-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-db-table">
+                                                <i data-lucide="plus-circle"></i> Add Table
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-env">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>Add Environment Settings</span>
+                                    </div>
+                                    <div id="env-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="env-name">Environment Name</label>
+                                            <input type="text" id="env-name" placeholder="staging">
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <!-- Raw JSON Text Editor -->
+                            <div id="json-editor-container" class="editor-view hidden">
+                                <div class="json-banner">
+                                    <i data-lucide="info" class="text-cyan"></i>
+                                    <span>You are editing the raw JSON payload. Visual input fields will synchronize automatically.</span>
+                                </div>
+                                <textarea id="json-textarea" spellcheck="false"></textarea>
+                                <div id="json-syntax-error" class="error-banner hidden">
+                                    <i data-lucide="alert-octagon"></i>
+                                    <span id="json-error-text">Malformed JSON error message.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- RIGHT COLUMN: RESULTS & AUDITS -->
+                <div class="grid-column space-y">
+                    
+                    <!-- IDENTITY AND QUALITY GATE GRID -->
+                    <div class="audit-summary-grid">
+                        
+                        <!-- TESTING AGENT IDENTITY CARD -->
+                        <div class="audit-card identity-card">
+                            <div class="neural-bg"></div>
+                            <div class="identity-header">
+                                <span class="indicator-dot blinking"></span>
+                                <span>SINGLE TESTING AGENT</span>
+                            </div>
+                            <div class="agent-matrix">
+                                <div class="matrix-cell">UNIT</div>
+                                <div class="matrix-cell">API</div>
+                                <div class="matrix-cell">INTEGRATION</div>
+                                <div class="matrix-cell">SECURITY</div>
+                                <div class="matrix-cell">UI</div>
+                                <div class="matrix-cell">REGRESSION</div>
+                            </div>
+                        </div>
+
+                        <!-- QUALITY GATE / RELEASE READINESS CARD -->
+                        <div class="audit-card gate-card">
+                            <span class="gate-card-title">RELEASE READINESS</span>
+                            
+                            <div class="readiness-gauge">
+                                <div class="gauge-value" id="gate-readiness-val">--%</div>
+                                <span class="gauge-desc" id="gate-readiness-label">PENDING RUN</span>
+                            </div>
+                            
+                            <div class="gate-metrics">
+                                <div class="gate-metric-row">
+                                    <span>Requirement Coverage</span>
+                                    <strong id="gate-req-coverage">--%</strong>
+                                </div>
+                                <div class="gate-metric-row">
+                                    <span>Risk Mitigation Coverage</span>
+                                    <strong id="gate-risk-coverage">--%</strong>
+                                </div>
+                                <div class="gate-metric-row pb-phase3">
+                                    <span>Critical Test Runs</span>
+                                    <div class="metric-phase3">
+                                        <strong class="text-muted">N/A</strong>
+                                        <span class="phase3-inline tag-amber">PH 3</span>
+                                    </div>
+                                </div>
+                                <div class="gate-metric-row pb-phase3">
+                                    <span>Security Compliance</span>
+                                    <div class="metric-phase3">
+                                        <strong class="text-muted">N/A</strong>
+                                        <span class="phase3-inline tag-cyan">PH 3</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="gate-status" id="gate-status-indicator">
+                                <span class="status-dot-sm"></span>
+                                <span class="status-text">WAITING ANALYSIS</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ANALYTICS INTELLIGENCE REPORT CARD -->
+                    <section class="panel results-panel-main">
+                        <div class="panel-header border-teal">
+                            <div class="panel-title text-cyan">
+                                <i data-lucide="brain-circuit"></i>
+                                <span>QUALITY & TESTING INTELLIGENCE</span>
+                            </div>
+                            <span id="run-status-badge" class="badge">AWAITING TRIGGER</span>
+                        </div>
+
+                        <div class="panel-body no-pad overflow-y">
+                            
+                            <!-- Validation errors box -->
+                            <div id="validation-errors-alert" class="validation-errors-box hidden">
+                                <div class="error-header">
+                                    <i data-lucide="alert-octagon" class="text-danger"></i>
+                                    <span>INPUT SPECIFICATION ERRORS</span>
+                                </div>
+                                <ul id="validation-errors-list"></ul>
+                            </div>
+
+                            <!-- Dashboard Idle empty state -->
+                            <div id="results-empty-state" class="center-empty">
+                                <div class="radar-ping">
+                                    <i data-lucide="radar"></i>
+                                </div>
+                                <h3>SYSTEM READY FOR RUN</h3>
+                                <p>Set up code repository settings and click <strong>START TESTING</strong> to trigger the AI QA intelligence workflow.</p>
+                            </div>
+
+                            <!-- Dashboard Loading state -->
+                            <div id="results-loading-state" class="center-empty hidden">
+                                <div class="command-spinner"></div>
+                                <h3>EXECUTING QA INTELLIGENCE PIPELINE</h3>
+                                <p id="loading-node-status">Orchestrating LangGraph analysis nodes...</p>
+                            </div>
+
+                            <!-- Dashboard Reports display -->
+                            <div id="results-content" class="results-content-area hidden">
+                                
+                                <!-- Result Navigation Tabs -->
+                                <div class="results-navbar">
+                                    <button class="results-nav-btn active" data-target="panel-reqs">
+                                        <i data-lucide="clipboard-list"></i>
+                                        <span>Requirements</span>
+                                    </button>
+                                    <button class="results-nav-btn" data-target="panel-risks">
+                                        <i data-lucide="alert-triangle"></i>
+                                        <span>Risks</span>
+                                    </button>
+                                    <button class="results-nav-btn" data-target="panel-impact">
+                                        <i data-lucide="zap"></i>
+                                        <span>Impact</span>
+                                    </button>
+                                    <button class="results-nav-btn" data-target="panel-strategy">
+                                        <i data-lucide="compass"></i>
+                                        <span>Strategy</span>
+                                    </button>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-phase3-execution">
+                                        <i data-lucide="play-circle"></i>
+                                        <span>Exec Logs</span>
+                                        <span class="phase3-tag tag-amber">PH 3</span>
+                                    </button>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-phase3-reports">
+                                        <i data-lucide="award"></i>
+                                        <span>Audits</span>
+                                        <span class="phase3-tag tag-cyan">PH 3</span>
+                                    </button>
+                                </div>
+
+                                <div class="tab-panels-viewport">
+                                    
+                                    <!-- REQUIREMENTS PANEL -->
+                                    <div id="panel-reqs" class="tab-content active">
+                                        <div class="content-header-bar">
+                                            <span>EXTRACTED TESTABLE SPECIFICATIONS</span>
+                                            <span class="source-mono">Source: LLM Parser (SRS/SDD)</span>
+                                        </div>
+                                        
+                                        <!-- Card Grid -->
+                                        <div id="requirements-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
+                                        </div>
+                                    </div>
+
+                                    <!-- RISKS PANEL -->
+                                    <div id="panel-risks" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>SOFTWARE AND DESIGN RISK AUDITS</span>
+                                            <span class="source-mono">Source: AI Assessment Engine</span>
+                                        </div>
+                                        <div id="risks-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
+                                        </div>
+                                    </div>
+
+                                    <!-- CHANGE IMPACT PANEL -->
+                                    <div id="panel-impact" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>REGRESSION ANALYSIS & DELTA CHANGE IMPACT</span>
+                                            <span class="source-mono">Source: Repository AST Diff</span>
+                                        </div>
+                                        
+                                        <div class="impact-panel-layout">
+                                            <div class="impact-left-panel">
+                                                <div class="regression-danger-card">
+                                                    <span class="rating-label">REGRESSION RISK RATING</span>
+                                                    <h2 id="regression-risk-level-badge">MEDIUM</h2>
+                                                </div>
+                                                <p id="impact-message" class="impact-desc-box"></p>
+                                            </div>
+                                            <div class="impact-right-panel">
+                                                <div class="impact-items-group">
+                                                    <h4>Modified Files</h4>
+                                                    <ul id="impact-changed-files" class="bullet-list text-mono"></ul>
+                                                </div>
+                                                <div class="impact-items-group">
+                                                    <h4>Modified Functions</h4>
+                                                    <ul id="impact-changed-functions" class="bullet-list text-mono"></ul>
+                                                </div>
+                                                <div class="impact-items-group border-top">
+                                                    <h4>Impacted Requirements</h4>
+                                                    <div id="impact-affected-reqs-tags" class="badge-group"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- STRATEGY PANEL -->
+                                    <div id="panel-strategy" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>TESTING METHODOLOGY & TARGETS STRATEGY</span>
+                                            <span class="source-mono">Source: Planner Inferences</span>
+                                        </div>
+                                        
+                                        <div class="strategy-columns-grid">
+                                            <div class="strategy-card">
+                                                <span class="strategy-title cyan-text">
+                                                    <i data-lucide="binary"></i> Unit Tests
+                                                </span>
+                                                <ul id="strategy-unit-tests" class="bullet-list"></ul>
+                                            </div>
+                                            <div class="strategy-card">
+                                                <span class="strategy-title teal-text">
+                                                    <i data-lucide="shuffle"></i> Integration Scenarios
+                                                </span>
+                                                <ul id="strategy-integration-tests" class="bullet-list"></ul>
+                                            </div>
+                                            <div class="strategy-card">
+                                                <span class="strategy-title amber-text">
+                                                    <i data-lucide="globe"></i> API Contracts
+                                                </span>
+                                                <ul id="strategy-api-tests" class="bullet-list"></ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="strategy-details-bar">
+                                            <div class="detail-block">
+                                                <h5>Recommended QA Tools</h5>
+                                                <div id="strategy-tools" class="badge-group"></div>
+                                            </div>
+                                            <div class="detail-block">
+                                                <h5>Target Host Environments</h5>
+                                                <div id="strategy-envs" class="badge-group"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- FUTURE PHASE EXECUTION PLACEHOLDERS -->
+                                    <div id="panel-phase3-execution" class="tab-content">
+                                        <div class="phase3-overlay-banner">
+                                            <i data-lucide="construction" class="text-amber"></i>
+                                            <h2>TEST RUN LOGS & GENERATION</h2>
+                                            <span class="phase3-coming-alert">COMING IN PHASE 3</span>
+                                            <p>Phase 3 introduces automated execution pipelines, containerized test harnesses, and real-time execution logger outputs.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- FUTURE PHASE REPORTS PLACEHOLDERS -->
+                                    <div id="panel-phase3-reports" class="tab-content">
+                                        <div class="phase3-overlay-banner">
+                                            <i data-lucide="shield-alert" class="text-cyan"></i>
+                                            <h2>COMPLIANCE AUDITING & REPORTS</h2>
+                                            <span class="phase3-coming-alert">COMING IN PHASE 3</span>
+                                            <p>Phase 3 introduces compliance standard parsing, security vulnerability scoring tables, and exportable PDF audit trails.</p>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </section>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Script Entrypoint -->
+    <script src="app.js"></script>
+</body>
+</html>

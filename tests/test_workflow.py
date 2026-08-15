@@ -1,0 +1,180 @@
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.workflow.testing_workflow import testing_workflow
+from app.models.state import TestingState
+
+client = TestClient(app)
+
+# --- Workflow (LangGraph) Tests ---
+
+def test_workflow_successful_execution():
+    """
+    Verify that a valid state runs through validation -> context_loader -> intelligence nodes -> END.
+    """
+    initial_state: TestingState = {
+        "project_id": "proj-123",
+        "srs": {"title": "Smart Building SRS", "version": "1.2", "features": ["F1", "F2"]},
+        "sdd": {"architecture": "Hexagonal", "components": ["Sensor Service"]},
+        "source_code": {"repository": "github.com/example/repo", "language": "Python"},
+        "api_docs": {"base_url": "http://localhost:8000"},
+        "database_schema": {"dialect": "PostgreSQL", "tables": ["alerts"]},
+        "test_data": {"fixtures": ["test_sensors.json"]},
+        "environment": {"name": "staging", "variables": {"DEBUG": "True"}},
+        
+        "validation_status": "pending",
+        "validation_errors": [],
+        "context": {},
+        "workflow_status": "pending",
+        "human_feedback": None,
+        
+        # Initialize Phase 2 fields
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None
+    }
+
+    result = testing_workflow.invoke(initial_state)
+
+    # Assert validation succeeded
+    assert result["validation_status"] == "passed"
+    assert len(result["validation_errors"]) == 0
+    assert result["workflow_status"] == "completed"
+
+    # Assert context loader compiled context correctly
+    context = result["context"]
+    assert "requirements_context" in context
+    assert context["requirements_context"]["title"] == "Smart Building SRS"
+    
+    # Assert Phase 2 intelligence fields are populated
+    assert len(result["requirements"]) > 0
+    assert len(result["risks"]) > 0
+    assert result["change_impact"] is not None
+    assert result["coverage"] is not None
+    assert result["test_strategy"] is not None
+
+    # Assert correct type validation on output models
+    assert result["requirements"][0].id == "REQ-001"
+    assert result["risks"][0].risk_id == "RSK-001"
+    assert result["coverage"].coverage_percentage == 66.7
+    assert result["test_strategy"].source == "ai_inference"
+
+
+def test_workflow_failed_execution():
+    """
+    Verify that an invalid state fails validation and short-circuits directly to END (bypassing context loader & intelligence nodes).
+    """
+    initial_state: TestingState = {
+        "project_id": "proj-123",
+        "srs": {},  # empty - should fail
+        "sdd": {"architecture": "MVC"},
+        "source_code": {"repository": "github.com/example/repo"},
+        "api_docs": None,
+        "database_schema": None,
+        "test_data": None,
+        "environment": None,
+        
+        "validation_status": "pending",
+        "validation_errors": [],
+        "context": {},
+        "workflow_status": "pending",
+        "human_feedback": None,
+        
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None
+    }
+
+    result = testing_workflow.invoke(initial_state)
+
+    # Assert validation failed
+    assert result["validation_status"] == "failed"
+    assert "srs cannot be empty" in result["validation_errors"]
+    assert result["workflow_status"] == "failed"
+    
+    # Assert context & intelligence remain empty/None
+    assert result["context"] == {}
+    assert len(result["requirements"]) == 0
+    assert len(result["risks"]) == 0
+    assert result["change_impact"] is None
+
+
+# --- FastAPI Endpoint Integration Tests ---
+
+def test_api_start_success():
+    """
+    Test POST /testing/start with valid payload returns HTTP 200 and passes.
+    """
+    payload = {
+        "project_id": "smart-building-001",
+        "srs": {"title": "SRS Specs"},
+        "sdd": {"architecture": "Event-driven"},
+        "source_code": {"repository": "git@github.com:example/repo.git"},
+        "api_docs": {"base_url": "http://localhost"},
+        "database_schema": {"tables": ["devices"]},
+        "test_data": {"fixtures": []},
+        "environment": {"name": "production"}
+    }
+    
+    response = client.post("/testing/start", json=payload)
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["project_id"] == "smart-building-001"
+    assert data["validation_status"] == "passed"
+    assert data["workflow_status"] == "completed"
+    
+    # Verify the response format matches encapsulation (intelligence field exists instead of context)
+    assert "context" not in data
+    assert "intelligence" in data
+    assert data["intelligence"] is not None
+    assert len(data["intelligence"]["requirements"]) > 0
+    assert data["intelligence"]["requirements"][0]["id"] == "REQ-001"
+    assert data["intelligence"]["risks"][0]["severity"] in ["High", "Medium", "Low"]
+    assert data["intelligence"]["test_strategy"]["source"] == "ai_inference"
+
+
+def test_api_start_validation_failure():
+    """
+    Test POST /testing/start with empty fields (which pass FastAPI schema check but fail Validator Node).
+    """
+    payload = {
+        "project_id": "smart-building-001",
+        "srs": {},  # Invalid - empty
+        "sdd": {"architecture": "Event-driven"},
+        "source_code": {}  # Invalid - empty
+    }
+    
+    response = client.post("/testing/start", json=payload)
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["validation_status"] == "failed"
+    assert "srs cannot be empty" in data["validation_errors"]
+    assert "source_code cannot be empty" in data["validation_errors"]
+    assert data["workflow_status"] == "failed"
+    
+    # Intelligence container must be null/None on validation failure
+    assert data["intelligence"] is None
+
+
+def test_api_start_malformed_request():
+    """
+    Test POST /testing/start with missing required field (triggers Pydantic schema validation failure / HTTP 422).
+    """
+    payload = {
+        "project_id": "smart-building-001",
+        # "srs" is missing
+        "sdd": {"architecture": "Event-driven"},
+        "source_code": {"repository": "git@github.com:example/repo.git"}
+    }
+    
+    response = client.post("/testing/start", json=payload)
+    assert response.status_code == 422  # Unprocessable Entity
+    
+    data = response.json()
+    assert "detail" in data
