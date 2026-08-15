@@ -1639,6 +1639,324 @@ input:checked + .switch-slider:before {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* === PHASE 3 TEST DESIGN SECTIONS === */
+
+/* Summary metrics row */
+.phase3-summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 700px) {
+    .phase3-summary-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.phase3-summary-item {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-teal);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    line-height: 1;
+}
+
+.summary-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+/* Filter bar */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    background-color: rgba(7, 26, 29, 0.4);
+    border: 1px solid var(--border-teal);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+    flex: 1;
+}
+
+.filter-group select {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-teal);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    outline: none;
+}
+
+/* Test case card enhancements */
+.tc-card,
+.scenario-card,
+.td-card,
+.trace-card {
+    gap: 10px;
+}
+
+.tc-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.tc-links-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tc-list-block {
+    background-color: rgba(7, 26, 29, 0.3);
+    border-left: 2px solid var(--border-teal);
+    padding: 6px 10px;
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tc-list-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.tc-expected-box {
+    background-color: rgba(52, 211, 153, 0.06);
+    border-left: 2px solid var(--mint);
+    padding: 6px 10px;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.tc-expected-box strong {
+    color: var(--mint);
+}
+
+.tc-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-top: 1px solid rgba(30, 69, 72, 0.4);
+    padding-top: 8px;
+}
+
+.tc-meta-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tc-meta-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.numbered-list {
+    list-style: decimal inside;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* ID color schemes for Phase 3 */
+.id-tc {
+    color: var(--amber);
+    background-color: rgba(245, 158, 11, 0.08);
+}
+
+.id-scn {
+    color: var(--teal);
+    background-color: rgba(20, 184, 166, 0.08);
+}
+
+.id-td {
+    color: var(--mint);
+    background-color: rgba(52, 211, 153, 0.08);
+}
+
+/* Traceability chain */
+.trace-chain-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(7, 26, 29, 0.3);
+    border: 1px solid var(--border-teal);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.trace-chain-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 52px;
+}
+
+.trace-chain-label {
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.trace-chain-value {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-primary);
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trace-chain-arrow {
+    color: var(--cyan);
+    font-size: 12px;
+}
+
+.trace-design {
+    color: var(--teal);
+}
+
+.trace-code {
+    color: var(--mint);
+}
+
+/* Traceability alert grid */
+.traceability-alert-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 800px) {
+    .traceability-alert-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.trace-alert-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-teal);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.trace-alert-card.alert-warning {
+    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(245, 158, 11, 0.04);
+}
+
+.trace-alert-card.alert-danger {
+    border-color: rgba(251, 113, 133, 0.3);
+    background-color: rgba(251, 113, 133, 0.04);
+}
+
+.trace-alert-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.trace-empty-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Traceability warnings box */
+.trace-warnings-box {
+    background-color: rgba(245, 158, 11, 0.05);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Test data fields table */
+.td-fields-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-teal);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.td-fields-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 8px;
+    padding: 6px 10px;
+    background-color: rgba(13, 39, 42, 0.6);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.td-fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 8px;
+    padding: 6px 10px;
+    border-top: 1px solid rgba(30, 69, 72, 0.3);
+    font-size: 11px;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+.td-field-value {
+    font-family: var(--font-mono);
+    color: var(--cyan);
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;

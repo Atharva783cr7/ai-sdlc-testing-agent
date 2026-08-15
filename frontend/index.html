@@ -173,10 +173,9 @@
                     <div class="pipeline-arrow" id="arrow-7">➔</div>
 
                     <!-- Node 8: TESTS -->
-                    <div class="pipeline-node future-node" id="node-tests">
+                    <div class="pipeline-node" id="node-tests">
                         <div class="node-inner">
                             <i data-lucide="terminal"></i>
-                            <span class="ph-badge">PH 3</span>
                         </div>
                         <span class="node-name">TESTS</span>
                     </div>
@@ -419,36 +418,32 @@
                             </div>
                         </div>
 
-                        <!-- QUALITY GATE / RELEASE READINESS CARD -->
+                        <!-- PHASE 3 STATUS CARD (Release Readiness is future Phase 7) -->
                         <div class="audit-card gate-card">
-                            <span class="gate-card-title">RELEASE READINESS</span>
+                            <span class="gate-card-title">PHASE 3 STATUS</span>
                             
                             <div class="readiness-gauge">
-                                <div class="gauge-value" id="gate-readiness-val">--%</div>
+                                <div class="gauge-value" id="gate-readiness-val">--</div>
                                 <span class="gauge-desc" id="gate-readiness-label">PENDING RUN</span>
                             </div>
                             
                             <div class="gate-metrics">
                                 <div class="gate-metric-row">
-                                    <span>Requirement Coverage</span>
-                                    <strong id="gate-req-coverage">--%</strong>
+                                    <span>Test Cases Generated</span>
+                                    <strong id="gate-test-cases">--</strong>
                                 </div>
                                 <div class="gate-metric-row">
-                                    <span>Risk Mitigation Coverage</span>
-                                    <strong id="gate-risk-coverage">--%</strong>
+                                    <span>Test Scenarios</span>
+                                    <strong id="gate-test-scenarios">--</strong>
+                                </div>
+                                <div class="gate-metric-row">
+                                    <span>Test Data Sets</span>
+                                    <strong id="gate-test-data">--</strong>
                                 </div>
                                 <div class="gate-metric-row pb-phase3">
-                                    <span>Critical Test Runs</span>
+                                    <span>Next Phase</span>
                                     <div class="metric-phase3">
-                                        <strong class="text-muted">N/A</strong>
-                                        <span class="phase3-inline tag-amber">PH 3</span>
-                                    </div>
-                                </div>
-                                <div class="gate-metric-row pb-phase3">
-                                    <span>Security Compliance</span>
-                                    <div class="metric-phase3">
-                                        <strong class="text-muted">N/A</strong>
-                                        <span class="phase3-inline tag-cyan">PH 3</span>
+                                        <strong class="text-muted">Phase 4 — Test Execution</strong>
                                     </div>
                                 </div>
                             </div>
@@ -519,14 +514,24 @@
                                         <i data-lucide="compass"></i>
                                         <span>Strategy</span>
                                     </button>
-                                    <button class="results-nav-btn phase3-tab" data-target="panel-phase3-execution">
-                                        <i data-lucide="play-circle"></i>
-                                        <span>Exec Logs</span>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-test-cases">
+                                        <i data-lucide="terminal"></i>
+                                        <span>Test Cases</span>
                                         <span class="phase3-tag tag-amber">PH 3</span>
                                     </button>
-                                    <button class="results-nav-btn phase3-tab" data-target="panel-phase3-reports">
-                                        <i data-lucide="award"></i>
-                                        <span>Audits</span>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-scenarios">
+                                        <i data-lucide="git-branch"></i>
+                                        <span>Scenarios</span>
+                                        <span class="phase3-tag tag-amber">PH 3</span>
+                                    </button>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-test-data">
+                                        <i data-lucide="database"></i>
+                                        <span>Test Data</span>
+                                        <span class="phase3-tag tag-cyan">PH 3</span>
+                                    </button>
+                                    <button class="results-nav-btn phase3-tab" data-target="panel-traceability">
+                                        <i data-lucide="git-merge"></i>
+                                        <span>Traceability</span>
                                         <span class="phase3-tag tag-cyan">PH 3</span>
                                     </button>
                                 </div>
@@ -629,23 +634,100 @@
                                         </div>
                                     </div>
 
-                                    <!-- FUTURE PHASE EXECUTION PLACEHOLDERS -->
-                                    <div id="panel-phase3-execution" class="tab-content">
-                                        <div class="phase3-overlay-banner">
-                                            <i data-lucide="construction" class="text-amber"></i>
-                                            <h2>TEST RUN LOGS & GENERATION</h2>
-                                            <span class="phase3-coming-alert">COMING IN PHASE 3</span>
-                                            <p>Phase 3 introduces automated execution pipelines, containerized test harnesses, and real-time execution logger outputs.</p>
+                                    <!-- TEST CASES PANEL -->
+                                    <div id="panel-test-cases" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>GENERATED TEST CASE SPECIFICATIONS</span>
+                                            <span class="source-mono">Source: Test Design Engine (Phase 3)</span>
+                                        </div>
+
+                                        <div class="phase3-summary-row">
+                                            <div class="phase3-summary-item">
+                                                <span class="summary-value" id="tc-summary-total">0</span>
+                                                <span class="summary-label">TOTAL CASES</span>
+                                            </div>
+                                            <div class="phase3-summary-item">
+                                                <span class="summary-value" id="tc-summary-types">0</span>
+                                                <span class="summary-label">TYPES</span>
+                                            </div>
+                                            <div class="phase3-summary-item">
+                                                <span class="summary-value" id="tc-summary-priority">0</span>
+                                                <span class="summary-label">PRIORITIES</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="filter-bar" id="test-case-filters">
+                                            <div class="filter-group">
+                                                <label for="filter-test-type">Test Type</label>
+                                                <select id="filter-test-type">
+                                                    <option value="all">All Types</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label for="filter-priority">Priority</label>
+                                                <select id="filter-priority">
+                                                    <option value="all">All Priorities</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label for="filter-category">Category</label>
+                                                <select id="filter-category">
+                                                    <option value="all">All Categories</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div id="test-cases-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
                                         </div>
                                     </div>
 
-                                    <!-- FUTURE PHASE REPORTS PLACEHOLDERS -->
-                                    <div id="panel-phase3-reports" class="tab-content">
-                                        <div class="phase3-overlay-banner">
-                                            <i data-lucide="shield-alert" class="text-cyan"></i>
-                                            <h2>COMPLIANCE AUDITING & REPORTS</h2>
-                                            <span class="phase3-coming-alert">COMING IN PHASE 3</span>
-                                            <p>Phase 3 introduces compliance standard parsing, security vulnerability scoring tables, and exportable PDF audit trails.</p>
+                                    <!-- SCENARIOS PANEL -->
+                                    <div id="panel-scenarios" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>BUSINESS TEST SCENARIOS</span>
+                                            <span class="source-mono">Source: Scenario Builder (Phase 3)</span>
+                                        </div>
+                                        <div id="scenarios-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
+                                        </div>
+                                    </div>
+
+                                    <!-- TEST DATA PANEL -->
+                                    <div id="panel-test-data" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>GENERATED TEST DATA RECORDS</span>
+                                            <span class="source-mono">Source: Test Data Generator (Phase 3)</span>
+                                        </div>
+                                        <div id="test-data-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
+                                        </div>
+                                    </div>
+
+                                    <!-- TRACEABILITY PANEL -->
+                                    <div id="panel-traceability" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>REQUIREMENT → RISK → DESIGN → CODE → SCENARIO → TEST CASE → TEST DATA</span>
+                                            <span class="source-mono">Source: Traceability Mapper (Phase 3)</span>
+                                        </div>
+
+                                        <div class="traceability-alert-grid">
+                                            <div class="trace-alert-card alert-warning">
+                                                <span class="trace-alert-label">UNCOVERED REQUIREMENTS</span>
+                                                <div id="trace-uncovered-reqs" class="badge-group"></div>
+                                            </div>
+                                            <div class="trace-alert-card alert-danger">
+                                                <span class="trace-alert-label">ORPHANED TEST CASES</span>
+                                                <div id="trace-orphaned-cases" class="badge-group"></div>
+                                            </div>
+                                            <div class="trace-alert-card alert-danger">
+                                                <span class="trace-alert-label">ORPHANED TEST DATA</span>
+                                                <div id="trace-orphaned-data" class="badge-group"></div>
+                                            </div>
+                                        </div>
+
+                                        <div id="traceability-list" class="cards-grid">
+                                            <!-- Dynamically injected -->
                                         </div>
                                     </div>
 

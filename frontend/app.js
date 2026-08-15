@@ -207,11 +207,12 @@ const runStatusBadge = document.getElementById('run-status-badge');
 const validationErrorsAlert = document.getElementById('validation-errors-alert');
 const validationErrorsList = document.getElementById('validation-errors-list');
 
-// Quality Gate Cards
+// Phase 3 Status Card (Release Readiness is future Phase 7)
 const gateReadinessVal = document.getElementById('gate-readiness-val');
 const gateReadinessLabel = document.getElementById('gate-readiness-label');
-const gateReqCoverage = document.getElementById('gate-req-coverage');
-const gateRiskCoverage = document.getElementById('gate-risk-coverage');
+const gateTestCases = document.getElementById('gate-test-cases');
+const gateTestScenarios = document.getElementById('gate-test-scenarios');
+const gateTestData = document.getElementById('gate-test-data');
 const gateStatusIndicator = document.getElementById('gate-status-indicator');
 
 // Navigation Tabs in Intelligence Panel
@@ -256,13 +257,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wire tab page panels
     resultsNavBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            resultsNavBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            const targetId = btn.getAttribute('data-target');
-            document.getElementById(targetId).classList.add('active');
+            activateResultsTab(btn.getAttribute('data-target'));
         });
     });
+
+    // Phase 3: Sidebar "Test Execution" link jumps to the Test Cases panel
+    const navTestExecution = document.getElementById('nav-test-execution');
+    if (navTestExecution) {
+        navTestExecution.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (resultsContent.classList.contains('hidden')) return;
+            activateResultsTab('panel-test-cases');
+        });
+    }
+
+    // Phase 3: Test case filter dropdowns
+    document.getElementById('filter-test-type').addEventListener('change', applyTestCaseFilters);
+    document.getElementById('filter-priority').addEventListener('change', applyTestCaseFilters);
+    document.getElementById('filter-category').addEventListener('change', applyTestCaseFilters);
 
     // START TESTING Action
     btnStartTesting.addEventListener('click', triggerStartTestingWorkflow);
@@ -406,10 +418,11 @@ function loadPresetTemplate(key) {
 }
 
 function resetReadinessDashboard() {
-    gateReadinessVal.textContent = '--%';
+    gateReadinessVal.textContent = '--';
     gateReadinessLabel.textContent = 'PENDING RUN';
-    gateReqCoverage.textContent = '--%';
-    gateRiskCoverage.textContent = '--%';
+    gateTestCases.textContent = '--';
+    gateTestScenarios.textContent = '--';
+    gateTestData.textContent = '--';
     gateStatusIndicator.className = 'gate-status';
     gateStatusIndicator.querySelector('.status-text').textContent = 'WAITING ANALYSIS';
 }
@@ -593,25 +606,39 @@ function setEditorViewMode(mode) {
 
 // Clear workflow nodes and arrows layout classes
 function resetPipelineVisualizer() {
-    const nodes = ['input', 'context', 'requirements', 'risk', 'impact', 'coverage', 'strategy'];
+    const nodes = ['input', 'context', 'requirements', 'risk', 'impact', 'coverage', 'strategy', 'tests'];
     nodes.forEach(node => {
         const el = document.getElementById(`node-${node}`);
         if (el) el.className = 'pipeline-node';
     });
 
-    for(let i=1; i<=7; i++) {
+    for(let i=1; i<=8; i++) {
         const arrow = document.getElementById(`arrow-${i}`);
         if (arrow) arrow.className = 'pipeline-arrow';
     }
 
-    // Reset Phase 3 placeholders nodes
-    document.getElementById('node-tests').className = 'pipeline-node future-node';
-    document.getElementById('arrow-8').className = 'pipeline-arrow future-arrow';
-    document.getElementById('node-quality_gate').className = 'pipeline-node future-node';
+    // Quality Gate remains a future node
+    const qualityGate = document.getElementById('node-quality_gate');
+    if (qualityGate) qualityGate.className = 'pipeline-node future-node';
 }
 
 function delay(ms) {
     return new Promise(r => setTimeout(r, ms));
+}
+
+// Shared cached Phase 3 test cases for filter re-rendering
+let cachedPhase3TestCases = [];
+
+// Activate a results tab by target id
+function activateResultsTab(targetId) {
+    if (!targetId) return;
+    resultsNavBtns.forEach(b => b.classList.remove('active'));
+    tabContents.forEach(c => c.classList.remove('active'));
+    const navBtn = Array.from(resultsNavBtns).find(b => b.getAttribute('data-target') === targetId);
+    if (navBtn) navBtn.classList.add('active');
+    const targetPanel = document.getElementById(targetId);
+    if (targetPanel) targetPanel.classList.add('active');
+    lucide.createIcons();
 }
 
 // Pipeline visual transition logic
@@ -625,7 +652,8 @@ async function runVisualPipelineProgression(validationPassed) {
         { id: 'risk', label: 'RISK', arrow: 3 },
         { id: 'impact', label: 'IMPACT', arrow: 4 },
         { id: 'coverage', label: 'COVERAGE', arrow: 5 },
-        { id: 'strategy', label: 'STRATEGY', arrow: 6 }
+        { id: 'strategy', label: 'STRATEGY', arrow: 6 },
+        { id: 'tests', label: 'TESTS', arrow: 7 }
     ];
 
     // Node 1: INPUT
@@ -736,11 +764,14 @@ async function triggerStartTestingWorkflow() {
             runStatusBadge.className = 'badge badge-danger';
             runStatusBadge.textContent = 'FAILED';
 
-            // Show gate blocked status
-            gateReadinessVal.textContent = '0%';
-            gateReadinessLabel.textContent = 'ERRORS DETECTED';
+            // Show Phase 3 status as blocked (validation failed)
+            gateReadinessVal.textContent = 'PHASE 3';
+            gateReadinessLabel.textContent = 'VALIDATION FAILED';
+            gateTestCases.textContent = '--';
+            gateTestScenarios.textContent = '--';
+            gateTestData.textContent = '--';
             gateStatusIndicator.className = 'gate-status blocked-review';
-            gateStatusIndicator.querySelector('.status-text').textContent = 'RELEASE BLOCKED';
+            gateStatusIndicator.querySelector('.status-text').textContent = 'INPUT ERRORS';
         }
 
     } catch (e) {
@@ -776,36 +807,22 @@ function fillQualityIntelligenceReports(data) {
     const report = data.intelligence;
     if (!report) return;
 
-    // A. Render Quality Gate Readiness Card Metrics
-    const reqPct = report.coverage ? report.coverage.coverage_percentage : 0.0;
-    gateReqCoverage.textContent = `${reqPct.toFixed(1)}%`;
-    
-    // Risk Mitigation Coverage: calculate percentage of risks with mitigation text
-    let riskMitPct = 100.0;
-    if (Array.isArray(report.risks) && report.risks.length > 0) {
-        const total = report.risks.length;
-        const mits = report.risks.filter(r => r.mitigation && r.mitigation.trim() !== '').length;
-        riskMitPct = (mits / total) * 100.0;
-    }
-    gateRiskCoverage.textContent = `${riskMitPct.toFixed(1)}%`;
+    // A. Phase 3 Status Card — populated from real test_design data.
+    // Release Readiness / Quality Gate is a future Phase 7 feature and is NOT fabricated here.
+    const design = data.test_design;
+    if (design) {
+        const tcCount = (design.test_cases || []).length;
+        const scnCount = (design.test_scenarios || []).length;
+        const tdCount = (design.generated_test_data || []).length;
 
-    // Composite readiness score: average of requirement coverage and risk mitigation
-    const overallReadiness = (reqPct + riskMitPct) / 2.0;
-    gateReadinessVal.textContent = `${Math.round(overallReadiness)}%`;
+        gateReadinessVal.textContent = 'PHASE 3';
+        gateReadinessLabel.textContent = 'TEST DESIGN COMPLETE';
+        gateTestCases.textContent = tcCount;
+        gateTestScenarios.textContent = scnCount;
+        gateTestData.textContent = tdCount;
 
-    // Update Gate Status badge classes
-    if (overallReadiness >= 80.0) {
-        gateReadinessLabel.textContent = 'READINESS OPTIMAL';
         gateStatusIndicator.className = 'gate-status ready-for-review';
-        gateStatusIndicator.querySelector('.status-text').textContent = 'READY FOR REVIEW';
-    } else if (overallReadiness >= 50.0) {
-        gateReadinessLabel.textContent = 'READINESS MODERATE';
-        gateStatusIndicator.className = 'gate-status pending-review';
-        gateStatusIndicator.querySelector('.status-text').textContent = 'PENDING REVIEW';
-    } else {
-        gateReadinessLabel.textContent = 'READINESS INSUFFICIENT';
-        gateStatusIndicator.className = 'gate-status blocked-review';
-        gateStatusIndicator.querySelector('.status-text').textContent = 'ACTION REQUIRED';
+        gateStatusIndicator.querySelector('.status-text').textContent = 'READY FOR EXECUTION';
     }
 
     // B. Populate Tab panels data
@@ -1086,4 +1103,503 @@ function fillQualityIntelligenceReports(data) {
             });
         }
     }
+
+    // 5. Phase 3 Test Design Reports
+    fillPhase3DesignReports(data);
+}
+
+/**
+ * Phase 3: Populate Test Cases, Scenarios, Test Data, and Traceability panels
+ * from the backend `test_design` response container.
+ */
+function fillPhase3DesignReports(data) {
+    const design = data.test_design;
+    if (!design) return;
+
+    renderTestCasesPanel(design.test_cases || []);
+    renderScenariosPanel(design.test_scenarios || []);
+    renderTestDataPanel(design.generated_test_data || []);
+    renderTraceabilityPanel(design.traceability, design.warnings || []);
+}
+
+/* ---- TEST CASES PANEL ---- */
+
+function renderTestCasesPanel(testCases) {
+    cachedPhase3TestCases = testCases || [];
+
+    // Summary metrics
+    const types = new Set(cachedPhase3TestCases.map(c => c.test_type).filter(Boolean));
+    const priorities = new Set(cachedPhase3TestCases.map(c => c.priority).filter(Boolean));
+    document.getElementById('tc-summary-total').textContent = cachedPhase3TestCases.length;
+    document.getElementById('tc-summary-types').textContent = types.size;
+    document.getElementById('tc-summary-priority').textContent = priorities.size;
+
+    // Populate filter dropdowns
+    populateFilterSelect('filter-test-type', types);
+    populateFilterSelect('filter-priority', priorities);
+    const categories = new Set(cachedPhase3TestCases.map(c => c.test_category).filter(Boolean));
+    populateFilterSelect('filter-category', categories);
+
+    applyTestCaseFilters();
+}
+
+function populateFilterSelect(selectId, values) {
+    const select = document.getElementById(selectId);
+    const current = select.value;
+    const sorted = Array.from(values).sort();
+    select.innerHTML = '';
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = `All ${selectId === 'filter-priority' ? 'Priorities' : selectId === 'filter-category' ? 'Categories' : 'Types'}`;
+    select.appendChild(allOption);
+    sorted.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+    });
+    select.value = sorted.includes(current) ? current : 'all';
+}
+
+function applyTestCaseFilters() {
+    const typeFilter = document.getElementById('filter-test-type').value;
+    const priorityFilter = document.getElementById('filter-priority').value;
+    const categoryFilter = document.getElementById('filter-category').value;
+
+    const filtered = cachedPhase3TestCases.filter(c => {
+        if (typeFilter !== 'all' && c.test_type !== typeFilter) return false;
+        if (priorityFilter !== 'all' && c.priority !== priorityFilter) return false;
+        if (categoryFilter !== 'all' && c.test_category !== categoryFilter) return false;
+        return true;
+    });
+
+    const container = document.getElementById('test-cases-list');
+    container.innerHTML = '';
+
+    if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'report-card';
+        empty.style.textAlign = 'center';
+        empty.style.color = 'var(--text-muted)';
+        empty.textContent = 'No test cases match the selected filters.';
+        container.appendChild(empty);
+        return;
+    }
+
+    filtered.forEach(c => renderTestCaseCard(c, container));
+}
+
+function renderTestCaseCard(c, container) {
+    const card = document.createElement('div');
+    card.className = 'report-card tc-card';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'report-card-header';
+
+    const id = document.createElement('span');
+    id.className = 'report-card-id id-tc';
+    id.textContent = c.test_case_id;
+
+    const badgeGroup = document.createElement('div');
+    badgeGroup.className = 'badge-group';
+
+    const typeBadge = document.createElement('span');
+    typeBadge.className = `inline-tag ${c.test_type === 'regression' ? 'tag-amber-border' : 'tag-cyan-border'}`;
+    typeBadge.textContent = c.test_type;
+
+    const catBadge = document.createElement('span');
+    catBadge.className = `inline-tag ${c.test_category === 'negative' || c.test_category === 'edge' ? 'tag-amber-border' : 'tag-mint-border'}`;
+    catBadge.textContent = c.test_category;
+
+    const prioBadge = document.createElement('span');
+    prioBadge.className = `inline-tag ${c.priority === 'High' ? 'text-danger' : c.priority === 'Medium' ? 'tag-amber-border' : ''}`;
+    prioBadge.textContent = `Priority: ${c.priority}`;
+
+    badgeGroup.appendChild(typeBadge);
+    badgeGroup.appendChild(catBadge);
+    badgeGroup.appendChild(prioBadge);
+
+    header.appendChild(id);
+    header.appendChild(badgeGroup);
+
+    // Title
+    const title = document.createElement('h4');
+    title.className = 'tc-title';
+    title.textContent = c.title;
+
+    // Links row
+    const links = document.createElement('div');
+    links.className = 'tc-links-row';
+    links.innerHTML = `
+        <span class="inline-tag tag-cyan-border">Req: <strong>${escapeHtml(c.requirement_id || 'N/A')}</strong></span>
+        <span class="inline-tag ${c.risk_id ? 'tag-amber-border' : ''}">Risk: <strong>${escapeHtml(c.risk_id || 'None')}</strong></span>
+        <span class="inline-tag">Design: <strong>${escapeHtml(c.design_component || 'N/A')}</strong></span>
+        <span class="inline-tag tag-mint-border">Target: <strong>${escapeHtml(c.code_target || 'N/A')}</strong></span>
+    `;
+
+    // Description
+    const desc = document.createElement('p');
+    desc.className = 'card-desc';
+    desc.textContent = c.description || '';
+
+    card.appendChild(header);
+    card.appendChild(title);
+    card.appendChild(links);
+    card.appendChild(desc);
+
+    // Preconditions
+    if (Array.isArray(c.preconditions) && c.preconditions.length > 0) {
+        card.appendChild(renderListBlock('Preconditions', c.preconditions));
+    }
+
+    // Steps
+    if (Array.isArray(c.steps) && c.steps.length > 0) {
+        card.appendChild(renderNumberedListBlock('Test Steps', c.steps));
+    }
+
+    // Assertions
+    if (Array.isArray(c.assertions) && c.assertions.length > 0) {
+        card.appendChild(renderListBlock('Assertions', c.assertions));
+    }
+
+    // Expected result
+    const expected = document.createElement('div');
+    expected.className = 'tc-expected-box';
+    expected.innerHTML = `<strong>Expected Result:</strong> ${escapeHtml(c.expected_result || '')}`;
+    card.appendChild(expected);
+
+    // Footer meta
+    const footer = document.createElement('div');
+    footer.className = 'tc-footer';
+
+    const mocks = document.createElement('div');
+    mocks.className = 'tc-meta-block';
+    mocks.innerHTML = `<span class="tc-meta-label">MOCKS</span><div class="badge-group">${
+        (Array.isArray(c.mocks_required) && c.mocks_required.length > 0)
+            ? c.mocks_required.map(m => `<span class="inline-tag">${escapeHtml(m)}</span>`).join('')
+            : '<span class="inline-tag">None</span>'
+    }</div>`;
+
+    const dataLinks = document.createElement('div');
+    dataLinks.className = 'tc-meta-block';
+    dataLinks.innerHTML = `<span class="tc-meta-label">TEST DATA</span><div class="badge-group">${
+        (Array.isArray(c.test_data_ids) && c.test_data_ids.length > 0)
+            ? c.test_data_ids.map(d => `<span class="inline-tag tag-mint-border text-mono">${escapeHtml(d)}</span>`).join('')
+            : '<span class="inline-tag">None</span>'
+    }</div>`;
+
+    footer.appendChild(mocks);
+    footer.appendChild(dataLinks);
+    card.appendChild(footer);
+
+    container.appendChild(card);
+}
+
+/* ---- SCENARIOS PANEL ---- */
+
+function renderScenariosPanel(scenarios) {
+    const container = document.getElementById('scenarios-list');
+    container.innerHTML = '';
+
+    if (scenarios.length === 0) {
+        container.innerHTML = '<div class="report-card" style="text-align:center; color:var(--text-muted);">No test scenarios generated.</div>';
+        return;
+    }
+
+    scenarios.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'report-card scenario-card';
+
+        const header = document.createElement('div');
+        header.className = 'report-card-header';
+        const id = document.createElement('span');
+        id.className = 'report-card-id id-scn';
+        id.textContent = s.scenario_id;
+        const links = document.createElement('div');
+        links.className = 'badge-group';
+        (s.requirement_ids || []).forEach(rid => {
+            const tag = document.createElement('span');
+            tag.className = 'inline-tag tag-cyan-border text-mono';
+            tag.textContent = rid;
+            links.appendChild(tag);
+        });
+        header.appendChild(id);
+        header.appendChild(links);
+
+        const title = document.createElement('h4');
+        title.className = 'tc-title';
+        title.textContent = s.title;
+
+        const desc = document.createElement('p');
+        desc.className = 'card-desc';
+        desc.textContent = s.description || '';
+
+        card.appendChild(header);
+        card.appendChild(title);
+        card.appendChild(desc);
+
+        // Ordered flow steps
+        if (Array.isArray(s.flow_steps) && s.flow_steps.length > 0) {
+            card.appendChild(renderNumberedListBlock('Flow Steps', s.flow_steps));
+        }
+
+        // Related test cases
+        const related = document.createElement('div');
+        related.className = 'tc-meta-block';
+        related.innerHTML = `<span class="tc-meta-label">RELATED TEST CASES</span><div class="badge-group">${
+            (Array.isArray(s.related_test_case_ids) && s.related_test_case_ids.length > 0)
+                ? s.related_test_case_ids.map(t => `<span class="inline-tag tag-mint-border text-mono">${escapeHtml(t)}</span>`).join('')
+                : '<span class="inline-tag">None</span>'
+        }</div>`;
+        card.appendChild(related);
+
+        container.appendChild(card);
+    });
+}
+
+/* ---- TEST DATA PANEL ---- */
+
+function renderTestDataPanel(testData) {
+    const container = document.getElementById('test-data-list');
+    container.innerHTML = '';
+
+    if (testData.length === 0) {
+        container.innerHTML = '<div class="report-card" style="text-align:center; color:var(--text-muted);">No test data generated.</div>';
+        return;
+    }
+
+    testData.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'report-card td-card';
+
+        const header = document.createElement('div');
+        header.className = 'report-card-header';
+        const id = document.createElement('span');
+        id.className = 'report-card-id id-td';
+        id.textContent = d.data_id;
+
+        const badges = document.createElement('div');
+        badges.className = 'badge-group';
+        const cat = document.createElement('span');
+        cat.className = `inline-tag ${
+            d.category === 'invalid' ? 'text-danger' :
+            d.category === 'boundary' ? 'tag-amber-border' :
+            d.category === 'edge' ? 'tag-amber-border' : 'tag-mint-border'
+        }`;
+        cat.textContent = d.category;
+        badges.appendChild(cat);
+        header.appendChild(id);
+        header.appendChild(badges);
+
+        const desc = document.createElement('p');
+        desc.className = 'card-desc';
+        desc.textContent = d.description || '';
+
+        card.appendChild(header);
+        card.appendChild(desc);
+
+        // Linked test cases
+        const linked = document.createElement('div');
+        linked.className = 'tc-meta-block';
+        linked.innerHTML = `<span class="tc-meta-label">LINKED TEST CASES</span><div class="badge-group">${
+            (Array.isArray(d.linked_test_case_ids) && d.linked_test_case_ids.length > 0)
+                ? d.linked_test_case_ids.map(t => `<span class="inline-tag tag-cyan-border text-mono">${escapeHtml(t)}</span>`).join('')
+                : '<span class="inline-tag">None</span>'
+        }</div>`;
+        card.appendChild(linked);
+
+        // Fields
+        if (Array.isArray(d.fields) && d.fields.length > 0) {
+            const fieldTable = document.createElement('div');
+            fieldTable.className = 'td-fields-table';
+            fieldTable.innerHTML = '<div class="td-fields-header"><span>FIELD</span><span>VALUE</span><span>DESCRIPTION</span></div>';
+            d.fields.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'td-fields-row';
+                const name = document.createElement('span');
+                name.className = 'text-mono';
+                name.textContent = f.name || '';
+                const value = document.createElement('span');
+                value.className = 'td-field-value';
+                value.textContent = typeof f.value === 'object' ? JSON.stringify(f.value) : String(f.value ?? '');
+                const descCell = document.createElement('span');
+                descCell.textContent = f.description || '';
+                row.appendChild(name);
+                row.appendChild(value);
+                row.appendChild(descCell);
+                fieldTable.appendChild(row);
+            });
+            card.appendChild(fieldTable);
+        }
+
+        container.appendChild(card);
+    });
+}
+
+/* ---- TRACEABILITY PANEL ---- */
+
+function renderTraceabilityPanel(traceability, warnings) {
+    // Alerts: uncovered / orphaned
+    const uncovered = document.getElementById('trace-uncovered-reqs');
+    const orphanedCases = document.getElementById('trace-orphaned-cases');
+    const orphanedData = document.getElementById('trace-orphaned-data');
+
+    fillTraceBadgeGroup(uncovered, traceability ? traceability.uncovered_requirements : [], 'No uncovered requirements');
+    fillTraceBadgeGroup(orphanedCases, traceability ? traceability.orphaned_test_cases : [], 'No orphaned test cases');
+    fillTraceBadgeGroup(orphanedData, traceability ? traceability.orphaned_test_data : [], 'No orphaned test data');
+
+    // Warnings
+    let warningsBlock = null;
+    const existingWarnings = document.getElementById('trace-warnings-block');
+    if (existingWarnings) existingWarnings.remove();
+
+    if (Array.isArray(warnings) && warnings.length > 0) {
+        warningsBlock = document.createElement('div');
+        warningsBlock.id = 'trace-warnings-block';
+        warningsBlock.className = 'trace-warnings-box';
+        const title = document.createElement('span');
+        title.className = 'trace-alert-label';
+        title.textContent = 'TEST DESIGN WARNINGS';
+        warningsBlock.appendChild(title);
+        const list = document.createElement('ul');
+        list.className = 'bullet-list';
+        warnings.forEach(w => {
+            const li = document.createElement('li');
+            li.textContent = w;
+            list.appendChild(li);
+        });
+        warningsBlock.appendChild(list);
+        const tracePanel = document.getElementById('panel-traceability');
+        tracePanel.insertBefore(warningsBlock, document.getElementById('traceability-list'));
+    }
+
+    // Entries
+    const container = document.getElementById('traceability-list');
+    container.innerHTML = '';
+
+    const entries = (traceability && Array.isArray(traceability.entries)) ? traceability.entries : [];
+    if (entries.length === 0) {
+        container.innerHTML = '<div class="report-card" style="text-align:center; color:var(--text-muted);">No traceability entries generated.</div>';
+        return;
+    }
+
+    entries.forEach(entry => {
+        const card = document.createElement('div');
+        card.className = 'report-card trace-card';
+
+        const chain = [
+            { label: 'REQ', value: entry.requirement_id, cls: 'id-req' },
+            { label: 'RSK', value: entry.risk_id, cls: 'id-risk' },
+            { label: 'DESIGN', value: entry.design_component, cls: 'trace-design' },
+            { label: 'CODE', value: entry.code_target, cls: 'trace-code' },
+            { label: 'SCN', value: entry.scenario_id, cls: 'id-scn' },
+            { label: 'TC', value: entry.test_case_id, cls: 'id-tc' }
+        ];
+
+        const chainRow = document.createElement('div');
+        chainRow.className = 'trace-chain-row';
+        chain.forEach((item, idx) => {
+            const node = document.createElement('div');
+            node.className = 'trace-chain-node';
+            const label = document.createElement('span');
+            label.className = 'trace-chain-label';
+            label.textContent = item.label;
+            const val = document.createElement('span');
+            val.className = `trace-chain-value ${item.cls}`;
+            val.textContent = item.value || 'N/A';
+            node.appendChild(label);
+            node.appendChild(val);
+            chainRow.appendChild(node);
+            if (idx < chain.length - 1) {
+                const arrow = document.createElement('span');
+                arrow.className = 'trace-chain-arrow';
+                arrow.textContent = '→';
+                chainRow.appendChild(arrow);
+            }
+        });
+
+        card.appendChild(chainRow);
+
+        // Test data
+        const dataIds = (Array.isArray(entry.test_data_ids) && entry.test_data_ids.length > 0)
+            ? entry.test_data_ids.map(d => `<span class="inline-tag tag-mint-border text-mono">${escapeHtml(d)}</span>`).join('')
+            : '<span class="inline-tag">None</span>';
+        const dataBlock = document.createElement('div');
+        dataBlock.className = 'tc-meta-block';
+        dataBlock.innerHTML = `<span class="tc-meta-label">TEST DATA</span><div class="badge-group">${dataIds}</div>`;
+        card.appendChild(dataBlock);
+
+        container.appendChild(card);
+    });
+}
+
+function fillTraceBadgeGroup(container, ids, emptyText) {
+    container.innerHTML = '';
+    if (Array.isArray(ids) && ids.length > 0) {
+        ids.forEach(id => {
+            const tag = document.createElement('span');
+            tag.className = 'inline-tag text-mono';
+            tag.textContent = id;
+            container.appendChild(tag);
+        });
+    } else {
+        const span = document.createElement('span');
+        span.className = 'trace-empty-label';
+        span.textContent = emptyText;
+        container.appendChild(span);
+    }
+}
+
+/* ---- SHARED HELPERS ---- */
+
+function renderListBlock(label, items) {
+    const block = document.createElement('div');
+    block.className = 'tc-list-block';
+    const title = document.createElement('span');
+    title.className = 'tc-list-label';
+    title.textContent = label;
+    block.appendChild(title);
+    const list = document.createElement('ul');
+    list.className = 'bullet-list';
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        list.appendChild(li);
+    });
+    block.appendChild(list);
+    return block;
+}
+
+function renderNumberedListBlock(label, items) {
+    const block = document.createElement('div');
+    block.className = 'tc-list-block';
+    const title = document.createElement('span');
+    title.className = 'tc-list-label';
+    title.textContent = label;
+    block.appendChild(title);
+    const list = document.createElement('ol');
+    list.className = 'numbered-list';
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        list.appendChild(li);
+    });
+    block.appendChild(list);
+    return block;
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    const AMP = String.fromCharCode(38);
+    const LT = String.fromCharCode(60);
+    const GT = String.fromCharCode(62);
+    const QUOT = String.fromCharCode(34);
+    const APOS = String.fromCharCode(39);
+    return String(value)
+        .replace(new RegExp(AMP, 'g'), AMP + 'amp;')
+        .replace(new RegExp(LT, 'g'), AMP + 'lt;')
+        .replace(new RegExp(GT, 'g'), AMP + 'gt;')
+        .replace(new RegExp(QUOT, 'g'), AMP + 'quot;')
+        .replace(new RegExp(APOS, 'g'), AMP + '#039;');
 }
