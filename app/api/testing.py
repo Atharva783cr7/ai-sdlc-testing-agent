@@ -200,9 +200,15 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
         for r in exec_report.get("results", []):
             results.append(TestExecutionResult(
                 test_case_id=r.get("test_case_id"),
+                name=r.get("name"),
                 status=r.get("status"),
                 details=r.get("details"),
                 module=r.get("module"),
+                duration=r.get("duration"),
+                attempts=r.get("attempts"),
+                logs=r.get("logs") or [],
+                artifacts=r.get("artifacts") or [],
+                screenshot=r.get("screenshot"),
             ))
 
         response = TestExecutionResponse(

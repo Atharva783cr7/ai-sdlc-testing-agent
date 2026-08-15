@@ -11,6 +11,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Ensure these symbols exist at module level so tests can monkeypatch them
+webdriver = None
+By = None
+WebDriverWait = None
+EC = None
+
 try:
     from selenium import webdriver
     from selenium.webdriver.common.by import By

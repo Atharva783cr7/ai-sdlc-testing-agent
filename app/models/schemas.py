@@ -65,9 +65,15 @@ class TestDesignSummary(BaseModel):
 
 class TestExecutionResult(BaseModel):
     test_case_id: str
+    name: Optional[str] = None
     status: str
     details: Optional[str] = None
     module: Optional[str] = None
+    duration: Optional[float] = None
+    attempts: Optional[int] = None
+    logs: List[Dict[str, Any]] = Field(default_factory=list)
+    artifacts: List[Dict[str, Any]] = Field(default_factory=list)
+    screenshot: Optional[str] = None
 
 
 class TestExecutionSummary(BaseModel):
