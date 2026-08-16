@@ -326,7 +326,7 @@ function getRowPlaceholderText(containerId) {
 // Check Backend connection status
 async function pollBackendStatus() {
     try {
-        const res = await fetch('/api/');
+        const res = await fetch('http://127.0.0.1:8085/');
         if (res.ok) {
             const data = await res.json();
             if (data.status === 'healthy') {
@@ -724,7 +724,7 @@ async function triggerStartTestingWorkflow() {
     runStatusBadge.textContent = 'PROCESSING';
 
     try {
-        const res = await fetch('/api/testing/start', {
+        const res = await fetch('http://127.0.0.1:8085/testing/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
