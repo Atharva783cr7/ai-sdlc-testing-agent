@@ -209,13 +209,25 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
                 logs=r.get("logs") or [],
                 artifacts=r.get("artifacts") or [],
                 screenshot=r.get("screenshot"),
+                # New structured fields (optional, backwards-compatible)
+                attempts_detail=r.get("attempts_detail") or r.get("attempts_detail") or r.get("attempts_detail", None) or r.get("attempts_detail", None),
+                artifacts_meta=r.get("artifacts_meta") or r.get("artifacts_meta", None),
+                screenshot_meta=r.get("screenshot_meta") or r.get("screenshot_meta", None),
             ))
-
         response = TestExecutionResponse(
             project_id=final_state.get("project_id"),
             execution_status=final_state.get("execution_status"),
             execution_summary=summary,
             results=results,
+            # Run-level metadata (optional)
+            run_id=exec_report.get("run_id"),
+            started_at=exec_report.get("started_at"),
+            completed_at=exec_report.get("completed_at"),
+            duration=exec_report.get("duration"),
+            platform=exec_report.get("platform"),
+            python_version=exec_report.get("python_version"),
+            max_retries=exec_report.get("max_retries"),
+            max_workers=exec_report.get("max_workers"),
         )
         return response
 

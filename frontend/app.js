@@ -629,16 +629,19 @@ function delay(ms) {
 // Shared cached Phase 3 test cases for filter re-rendering
 let cachedPhase3TestCases = [];
 
-// Activate a results tab by target id
+// Activate a results tab by target id (canonical implementation)
 function activateResultsTab(targetId) {
-    if (!targetId) return;
-    resultsNavBtns.forEach(b => b.classList.remove('active'));
-    tabContents.forEach(c => c.classList.remove('active'));
-    const navBtn = Array.from(resultsNavBtns).find(b => b.getAttribute('data-target') === targetId);
-    if (navBtn) navBtn.classList.add('active');
-    const targetPanel = document.getElementById(targetId);
-    if (targetPanel) targetPanel.classList.add('active');
-    lucide.createIcons();
+    document.querySelectorAll('.results-nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === targetId);
+    });
+
+    document.querySelectorAll('.tab-content').forEach(panel => {
+        panel.classList.toggle('active', panel.id === targetId);
+    });
+
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }
 
 // Pipeline visual transition logic
@@ -749,6 +752,13 @@ async function triggerStartTestingWorkflow() {
             resultsContent.classList.remove('hidden');
             runStatusBadge.className = 'badge badge-success';
             runStatusBadge.textContent = 'COMPLETED';
+            
+            // Fetch and render Phase 4 execution results
+            try {
+                await fetchAndRenderExecutionResults(payload);
+            } catch (e) {
+                console.error('Phase 4 fetch/render error', e);
+            }
         } else {
             // Show validation failure reports
             resultsLoadingState.classList.add('hidden');
@@ -1549,6 +1559,224 @@ function fillTraceBadgeGroup(container, ids, emptyText) {
         span.textContent = emptyText;
         container.appendChild(span);
     }
+}
+
+/* ---- PHASE 4: EXECUTION FETCH & RENDER HELPERS ---- */
+
+async function fetchAndRenderExecutionResults(payload) {
+    const panel = document.getElementById('panel-phase3-execution');
+    const container = document.getElementById('execution-results-container');
+    const modulesOverview = document.getElementById('execution-module-overview');
+
+    if (panel) {
+        const resultsContainer = document.getElementById('execution-results-container');
+        const modulesOverview = document.getElementById('execution-module-overview');
+        if (resultsContainer) resultsContainer.innerHTML = '<div style="padding:18px;">Loading execution results...</div>';
+        if (modulesOverview) modulesOverview.innerHTML = '';
+    }
+
+    // Mark TESTS node as running
+    const nodeTests = document.getElementById('node-tests');
+    if (nodeTests) nodeTests.classList.add('running');
+
+    try {
+        const res = await fetch('http://127.0.0.1:8085/testing/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Execution server error ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // Render into the panel
+        renderExecutionResults(data);
+
+        // Activate Exec Logs tab
+        activateResultsTab('panel-phase3-execution');
+
+        // Mark nodes as completed
+        if (nodeTests) nodeTests.classList.remove('running');
+        if (nodeTests) nodeTests.classList.add('completed');
+        const qg = document.getElementById('node-quality_gate');
+        if (qg) qg.classList.remove('future-node');
+        if (qg) qg.classList.add('pipeline-node');
+
+    } catch (e) {
+        console.error('Execution fetch error', e);
+        if (panel) panel.innerHTML = `<div class="content-header-bar"><span>PHASE 4 — TEST EXECUTION</span></div><div style="padding:18px;color:var(--text-danger);">Execution failed: ${e.message}</div>`;
+    }
+}
+
+function renderExecutionResults(response) {
+    if (!response) return;
+
+    const summary = response.execution_summary || {};
+    const results = Array.isArray(response.results) ? response.results : [];
+
+    // Populate summary fields
+    document.getElementById('execution-total').textContent = summary.total ?? results.length;
+    document.getElementById('execution-passed').textContent = summary.passed ?? results.filter(r => r.status === 'passed').length;
+    document.getElementById('execution-failed').textContent = summary.failed ?? results.filter(r => r.status === 'failed').length;
+    document.getElementById('execution-duration').textContent = summary.duration ?? (results.reduce((s, r) => s + (r.duration || 0), 0) + 's');
+
+    // Modules overview
+    const modulesOverview = document.getElementById('execution-module-overview');
+    modulesOverview.innerHTML = '';
+    const modules = [...new Set(results.map(r => r.module).filter(Boolean))];
+    if (modules.length === 0) {
+        modulesOverview.innerHTML = '<div class="report-card" style="text-align:center;color:var(--text-muted);">No execution modules reported</div>';
+    } else {
+        modules.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'report-card module-card';
+            card.innerHTML = `<div class="report-card-header"><span class="report-card-id">${escapeHtml(m)}</span></div><div style="padding:8px;color:var(--text-muted)">Module reported by execution engine</div>`;
+            modulesOverview.appendChild(card);
+        });
+    }
+
+    // Results container
+    const container = document.getElementById('execution-results-container');
+    container.innerHTML = '';
+
+    if (results.length === 0) {
+        container.innerHTML = '<div class="report-card" style="text-align:center;color:var(--text-muted);">No execution results returned.</div>';
+        return;
+    }
+
+    results.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'report-card exec-card';
+
+        const header = document.createElement('div');
+        header.className = 'report-card-header';
+
+        const id = document.createElement('span');
+        id.className = 'report-card-id';
+        id.textContent = r.test_case_id || r.id || 'unnamed';
+
+        const statusBadge = document.createElement('div');
+        statusBadge.className = 'badge-group';
+        const st = document.createElement('span');
+        st.className = `inline-tag ${r.status === 'passed' ? 'tag-mint-border' : r.status === 'failed' ? 'text-danger' : ''}`;
+        st.textContent = r.status ? r.status.toUpperCase() : 'UNKNOWN';
+        statusBadge.appendChild(st);
+
+        header.appendChild(id);
+        header.appendChild(statusBadge);
+
+        const title = document.createElement('h4');
+        title.className = 'tc-title';
+        title.textContent = r.name || r.title || 'Test Case';
+
+        const metaRow = document.createElement('div');
+        metaRow.className = 'tc-links-row';
+        metaRow.innerHTML = `<span class="inline-tag">Module: <strong>${escapeHtml(r.module || 'N/A')}</strong></span>
+                             <span class="inline-tag">Duration: <strong>${r.duration ?? '--'}</strong></span>
+                             <span class="inline-tag">Attempts: <strong>${(Array.isArray(r.attempts) ? r.attempts.length : (r.attempts ? 1 : 0))}</strong></span>`;
+
+        card.appendChild(header);
+        card.appendChild(title);
+        card.appendChild(metaRow);
+
+        // Details (hidden by default)
+        const details = document.createElement('div');
+        details.className = 'execution-details hidden';
+
+        // Attempts
+        const attemptsBlock = document.createElement('div');
+        attemptsBlock.className = 'execution-attempts';
+        attemptsBlock.innerHTML = `<strong>Attempts:</strong>`;
+        if (Array.isArray(r.attempts) && r.attempts.length > 0) {
+            r.attempts.forEach((a, idx) => {
+                const ab = document.createElement('div');
+                ab.className = 'attempt-item';
+                ab.innerHTML = `<div style="font-size:13px;margin-top:6px;"><strong>Attempt ${idx+1}:</strong> Status: ${a.status || '--'} Duration: ${a.duration ?? '--'}</div>`;
+                // Per-attempt logs
+                const logBlock = document.createElement('div');
+                logBlock.className = 'execution-logs';
+                logBlock.innerHTML = `<div style="font-weight:600;margin-top:6px;">Logs:</div>`;
+                if (Array.isArray(a.logs) && a.logs.length > 0) {
+                    a.logs.forEach(line => {
+                        const p = document.createElement('pre');
+                        p.style.margin = '6px 0';
+                        p.textContent = line;
+                        logBlock.appendChild(p);
+                    });
+                } else {
+                    logBlock.innerHTML += `<div style="color:var(--text-muted)">No logs for this attempt</div>`;
+                }
+                ab.appendChild(logBlock);
+                attemptsBlock.appendChild(ab);
+            });
+        } else {
+            attemptsBlock.innerHTML += `<div style="color:var(--text-muted)">No attempts recorded</div>`;
+        }
+        details.appendChild(attemptsBlock);
+
+        // Artifacts
+        const artBlock = document.createElement('div');
+        artBlock.className = 'execution-artifacts';
+        artBlock.innerHTML = `<strong>Artifacts:</strong>`;
+        if (Array.isArray(r.artifacts) && r.artifacts.length > 0) {
+            const list = document.createElement('div');
+            list.className = 'badge-group';
+            r.artifacts.forEach(a => {
+                const tag = document.createElement('span');
+                tag.className = 'inline-tag text-mono';
+                tag.textContent = a;
+                list.appendChild(tag);
+            });
+            artBlock.appendChild(list);
+        } else {
+            artBlock.innerHTML += `<div style="color:var(--text-muted)">No artifacts generated</div>`;
+        }
+        details.appendChild(artBlock);
+
+        // Screenshot
+        const ssBlock = document.createElement('div');
+        ssBlock.className = 'execution-screenshot';
+        ssBlock.innerHTML = `<strong>Screenshot:</strong>`;
+        if (r.screenshot) {
+            const img = document.createElement('img');
+            img.src = r.screenshot;
+            img.alt = 'screenshot';
+            img.style.maxWidth = '100%';
+            img.style.marginTop = '8px';
+            ssBlock.appendChild(img);
+        } else {
+            ssBlock.innerHTML += `<div style="color:var(--text-muted)">No screenshot captured</div>`;
+        }
+        details.appendChild(ssBlock);
+
+        // Details text
+        const textBlock = document.createElement('div');
+        textBlock.className = 'execution-meta';
+        textBlock.style.marginTop = '8px';
+        textBlock.innerHTML = `<div><strong>Status:</strong> ${r.status || '--'}</div><div style="margin-top:6px;"><strong>Duration:</strong> ${r.duration ?? '--'}</div><div style="margin-top:6px;"><strong>Details:</strong><div style="color:var(--text-muted);margin-top:6px">${escapeHtml(r.details || '')}</div></div>`;
+        details.appendChild(textBlock);
+
+        // Toggle button
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'btn btn-sm btn-secondary';
+        toggleBtn.style.marginTop = '10px';
+        toggleBtn.textContent = 'Show Execution Details';
+        toggleBtn.addEventListener('click', () => {
+            details.classList.toggle('hidden');
+            toggleBtn.textContent = details.classList.contains('hidden') ? 'Show Execution Details' : 'Hide Execution Details';
+        });
+
+        card.appendChild(toggleBtn);
+        card.appendChild(details);
+        container.appendChild(card);
+    });
+
+    lucide.createIcons();
 }
 
 /* ---- SHARED HELPERS ---- */

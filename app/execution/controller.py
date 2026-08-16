@@ -9,6 +9,10 @@ import logging
 import time
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import uuid
+import datetime
+import platform as _platform
+import sys as _sys
 
 from app.execution.modules import (
     unit as unit_module,
@@ -43,6 +47,13 @@ class ExecutionController:
         # Phase 5 defaults
         self.max_workers = 8
         self.default_retry = 0
+        self.run_id = None
+        # runtime metadata (populated per execute_test_suite run)
+        self.run_started_at = None
+        self.run_completed_at = None
+        self.run_duration = None
+        self.platform = f"{_platform.system()} { _platform.release()}"
+        self.python_version = _sys.version
 
     def execute_test_case(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a single test case specification.
@@ -58,7 +69,8 @@ class ExecutionController:
         if module is None:
             logger.info(f"No execution module for type '{ttype}', marking SKIPPED")
             return {
-                "test_case_id": tcid,
+            "test_case_id": tcid,
+            "run_id": self.run_id,
                 "name": name,
                 "status": "SKIPPED",
                 "details": f"No execution module for type '{ttype}'",
@@ -76,6 +88,8 @@ class ExecutionController:
         attempts = 0
         logs: List[Dict[str, Any]] = []
         artifacts: List[Dict[str, Any]] = []
+        artifacts_meta: List[Dict[str, Any]] = []
+        attempts_detail: List[Dict[str, Any]] = []
         screenshot = None
         start_total = time.time()
 
@@ -93,14 +107,17 @@ class ExecutionController:
 
             end = time.time()
             duration = end - start
-            logs.append({
-                "attempt": attempts,
-                "start": start,
-                "end": end,
+            attempt_entry = {
+                "attempt_number": attempts,
+                "start": datetime.datetime.utcfromtimestamp(start).isoformat() + 'Z',
+                "end": datetime.datetime.utcfromtimestamp(end).isoformat() + 'Z',
                 "duration": duration,
                 "status": status,
                 "details": details,
-            })
+                "timestamp": datetime.datetime.utcfromtimestamp(end).isoformat() + 'Z',
+            }
+            logs.append(attempt_entry)
+            attempts_detail.append(attempt_entry)
 
             # If UI error, attempt to capture a screenshot artifact (best-effort)
             if ttype == 'ui' and status == 'ERROR':
@@ -126,7 +143,15 @@ class ExecutionController:
                                 driver.get(first_open)
                             fd, path = tempfile.mkstemp(suffix='.png')
                             driver.save_screenshot(path)
-                            artifacts.append({"type": "screenshot", "path": path})
+                            art = {"type": "screenshot", "path": path}
+                            artifacts.append(art)
+                            artifacts_meta.append({
+                                "type": "screenshot",
+                                "path": path,
+                                "metadata": {},
+                                "test_case_id": tcid,
+                                "attempt": attempts,
+                            })
                             screenshot = path
                         finally:
                             try:
@@ -152,6 +177,7 @@ class ExecutionController:
 
         return {
             "test_case_id": tcid,
+            "run_id": self.run_id,  # run_id attached to every result
             "name": name,
             "status": status,
             "details": details,
@@ -159,8 +185,11 @@ class ExecutionController:
             "duration": total_duration,
             "attempts": attempts,
             "logs": logs,
+            "attempts_detail": attempts_detail,
             "artifacts": artifacts,
+            "artifacts_meta": artifacts_meta,
             "screenshot": screenshot,
+            "screenshot_meta": ({"path": screenshot, "captured_at": datetime.datetime.utcnow().isoformat() + 'Z'} if screenshot else None),
         }
 
     def execute_test_suite(self, test_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -170,6 +199,12 @@ class ExecutionController:
         """
         results: List[Dict[str, Any]] = []
         counts = {"PASS": 0, "FAIL": 0, "ERROR": 0, "SKIPPED": 0}
+
+        # generate run-level metadata
+        self.run_id = str(uuid.uuid4()).upper()
+        self.run_started_at = datetime.datetime.utcnow().isoformat() + 'Z'
+        self.run_completed_at = None
+        self.run_duration = None
 
         # Execute in parallel using threads (I/O bound modules like httpx/selenium)
         max_workers = min(self.max_workers, max(1, len(test_cases)))
@@ -185,6 +220,13 @@ class ExecutionController:
                 results.append(res)
                 counts[res.get("status")] = counts.get(res.get("status"), 0) + 1
 
+        # finalize run metadata
+        self.run_completed_at = datetime.datetime.utcnow().isoformat() + 'Z'
+        try:
+            self.run_duration = (datetime.datetime.fromisoformat(self.run_completed_at.replace('Z','')) - datetime.datetime.fromisoformat(self.run_started_at.replace('Z',''))).total_seconds()
+        except Exception:
+            self.run_duration = None
+
         summary = {
             "total": len(results),
             "pass": counts.get("PASS", 0),
@@ -193,4 +235,15 @@ class ExecutionController:
             "skipped": counts.get("SKIPPED", 0),
         }
 
-        return {"results": results, "summary": summary}
+        return {
+            "run_id": self.run_id,
+            "started_at": self.run_started_at,
+            "completed_at": self.run_completed_at,
+            "duration": self.run_duration,
+            "platform": self.platform,
+            "python_version": self.python_version,
+            "max_retries": self.default_retry,
+            "max_workers": max_workers,
+            "results": results,
+            "summary": summary,
+        }

@@ -74,6 +74,10 @@ class TestExecutionResult(BaseModel):
     logs: List[Dict[str, Any]] = Field(default_factory=list)
     artifacts: List[Dict[str, Any]] = Field(default_factory=list)
     screenshot: Optional[str] = None
+    # New Phase 5 structured extensions (backwards-compatible additions)
+    attempts_detail: Optional[List[Dict[str, Any]]] = Field(default=None, description="Structured attempt entries with timestamps, durations, and details")
+    artifacts_meta: Optional[List[Dict[str, Any]]] = Field(default=None, description="Structured artifact metadata for each artifact")
+    screenshot_meta: Optional[Dict[str, Any]] = Field(default=None, description="Structured screenshot metadata (path, captured_at, etc.)")
 
 
 class TestExecutionSummary(BaseModel):
@@ -89,6 +93,15 @@ class TestExecutionResponse(BaseModel):
     execution_status: Optional[str] = Field(default=None, description="Execution lifecycle status: completed, no_tests, skipped, error")
     execution_summary: TestExecutionSummary
     results: List[TestExecutionResult] = Field(default_factory=list)
+    # Run-level Phase 5 metadata (optional, backwards-compatible)
+    run_id: Optional[str] = Field(default=None, description="Unique identifier for this execution run")
+    started_at: Optional[str] = Field(default=None, description="Run start timestamp (ISO8601)")
+    completed_at: Optional[str] = Field(default=None, description="Run completion timestamp (ISO8601)")
+    duration: Optional[float] = Field(default=None, description="Total run duration in seconds")
+    platform: Optional[str] = Field(default=None, description="Host platform info")
+    python_version: Optional[str] = Field(default=None, description="Python interpreter version used")
+    max_retries: Optional[int] = Field(default=None, description="Default max retries applied by the controller")
+    max_workers: Optional[int] = Field(default=None, description="Max worker threads used for this run")
 
 
 class TestingStartResponse(BaseModel):

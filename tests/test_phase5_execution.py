@@ -29,6 +29,11 @@ def test_parallel_execution(monkeypatch):
     # If parallel, elapsed should be less than sequential total (5 * 0.25)
     assert elapsed < 5 * 0.25
     assert report["summary"]["total"] == 5
+    # run-level metadata should be present
+    assert report.get("run_id") is not None
+    assert report.get("started_at") is not None
+    assert report.get("completed_at") is not None
+    assert report.get("duration") is not None
     for r in report["results"]:
         assert r["status"] == "PASS"
         assert "duration" in r and r["duration"] >= 0
@@ -52,6 +57,9 @@ def test_retry_logic(monkeypatch):
     assert res["status"] == "PASS"
     assert res["attempts"] == 3
     assert isinstance(res["logs"], list) and len(res["logs"]) == 3
+    # structured attempts detail preserved
+    assert isinstance(res.get("attempts_detail"), list) and len(res.get("attempts_detail")) == 3
+    assert res.get("run_id") is not None
 
 
 def test_execution_logs_and_duration(monkeypatch):
@@ -65,6 +73,7 @@ def test_execution_logs_and_duration(monkeypatch):
     assert "logs" in res
     assert isinstance(res["logs"], list)
     assert res["duration"] >= 0
+    assert res.get("run_id") is not None
 
 
 def test_ui_failure_captures_screenshot(monkeypatch, tmp_path):
@@ -104,7 +113,13 @@ def test_ui_failure_captures_screenshot(monkeypatch, tmp_path):
     assert (res.get("screenshot") is not None) or (len(res.get("artifacts", [])) > 0)
     if res.get("screenshot"):
         assert os.path.exists(res.get("screenshot"))
+        # screenshot_meta should reflect the capture
+        assert res.get("screenshot_meta") is None or isinstance(res.get("screenshot_meta"), dict)
     else:
         # check artifact path
         ap = res.get("artifacts", [])[0]["path"]
         assert os.path.exists(ap)
+    # artifacts_meta should exist when artifacts present
+    if res.get("artifacts"):
+        assert res.get("artifacts_meta") is None or isinstance(res.get("artifacts_meta"), list)
+    assert res.get("run_id") is not None
