@@ -1,6 +1,14 @@
 from typing import TypedDict, List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, Field
 
+from app.analysis.schemas import (
+    DefectAnalysis,
+    FailureAnalysis,
+    FlakyTestAnalysis,
+    ResultIntelligenceReport,
+    RootCauseAnalysis,
+)
+
 SourceType = Literal["srs", "sdd", "source_code", "ai_inference"]
 
 class RequirementInfo(BaseModel):
@@ -164,3 +172,10 @@ class TestingState(TypedDict):
     execution_status: Optional[str]
     execution_results: List[Dict[str, Any]]
     execution_summary: Optional[Dict[str, Any]]
+
+    # Phase 6 result intelligence fields
+    result_intelligence: Optional[ResultIntelligenceReport]
+    failure_analyses: List[FailureAnalysis]
+    root_cause_analyses: List[RootCauseAnalysis]
+    defect_analyses: List[DefectAnalysis]
+    flaky_analyses: List[FlakyTestAnalysis]

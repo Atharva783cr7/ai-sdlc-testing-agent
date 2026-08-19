@@ -12,6 +12,8 @@ from app.models.schemas import (
 from app.models.state import TestingState
 from app.workflow.testing_workflow import testing_workflow
 from app.execution.controller import ExecutionController
+from app.analysis.result_intelligence import analyze_execution_report
+from app.analysis.schemas import ResultIntelligenceReport
 
 router = APIRouter(prefix="/testing", tags=["Testing"])
 logger = logging.getLogger(__name__)
@@ -97,6 +99,15 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
         )
 
 
+def _store_analysis(state: TestingState, analysis: ResultIntelligenceReport) -> None:
+    """Persist Phase 6 analysis artifacts into the workflow state."""
+    state["result_intelligence"] = analysis
+    state["failure_analyses"] = analysis.failures
+    state["root_cause_analyses"] = analysis.root_causes
+    state["defect_analyses"] = analysis.defects
+    state["flaky_analyses"] = analysis.flaky_tests
+
+
 @router.post("/execute", response_model=TestExecutionResponse, status_code=status.HTTP_200_OK)
 def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecutionResponse:
     """Run the full workflow (Phases 1-3) and execute Phase 3 generated test cases.
@@ -155,12 +166,16 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
             final_state["execution_results"] = []
             final_state["execution_summary"] = {"total": 0, "pass": 0, "fail": 0, "error": 0, "skipped": 0}
 
+            analysis = analyze_execution_report({"results": []})
+            _store_analysis(final_state, analysis)
+
             summary = TestExecutionSummary(total=0, passed=0, failed=0, errors=0, skipped=0)
             response = TestExecutionResponse(
                 project_id=final_state.get("project_id"),
                 execution_status=final_state.get("execution_status"),
                 execution_summary=summary,
                 results=[],
+                analysis=analysis,
             )
             return response
 
@@ -185,6 +200,10 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
         final_state["execution_status"] = "completed"
         final_state["execution_results"] = exec_report.get("results", [])
         final_state["execution_summary"] = exec_report.get("summary", {})
+
+        # Phase 6: derive result intelligence from the Phase 5 execution report
+        analysis = analyze_execution_report(exec_report)
+        _store_analysis(final_state, analysis)
 
         # Map summary keys
         summary_map = exec_report.get("summary", {})
@@ -228,6 +247,7 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
             python_version=exec_report.get("python_version"),
             max_retries=exec_report.get("max_retries"),
             max_workers=exec_report.get("max_workers"),
+            analysis=analysis,
         )
         return response
 

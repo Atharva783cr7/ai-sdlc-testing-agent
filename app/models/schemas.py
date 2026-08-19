@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
+from app.analysis.schemas import ResultIntelligenceReport
 from app.models.state import (
     RequirementInfo,
     RiskInfo,
@@ -102,6 +103,8 @@ class TestExecutionResponse(BaseModel):
     python_version: Optional[str] = Field(default=None, description="Python interpreter version used")
     max_retries: Optional[int] = Field(default=None, description="Default max retries applied by the controller")
     max_workers: Optional[int] = Field(default=None, description="Max worker threads used for this run")
+    # Phase 6 result intelligence (optional, backwards-compatible)
+    analysis: Optional[ResultIntelligenceReport] = Field(default=None, description="Aggregated Phase 6 result intelligence for this run")
 
 
 class TestingStartResponse(BaseModel):
