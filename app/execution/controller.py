@@ -47,7 +47,8 @@ class ExecutionController:
         # Phase 5 defaults
         self.max_workers = 8
         self.default_retry = 0
-        self.run_id = None
+        # default run_id for standalone test_case executions
+        self.run_id = str(uuid.uuid4()).upper()
         # runtime metadata (populated per execute_test_suite run)
         self.run_started_at = None
         self.run_completed_at = None
