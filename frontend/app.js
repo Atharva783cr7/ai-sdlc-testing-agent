@@ -612,7 +612,7 @@ function resetPipelineVisualizer() {
         if (el) el.className = 'pipeline-node';
     });
 
-    for(let i=1; i<=8; i++) {
+    for(let i=1; i<=9; i++) {
         const arrow = document.getElementById(`arrow-${i}`);
         if (arrow) arrow.className = 'pipeline-arrow';
     }
@@ -620,6 +620,10 @@ function resetPipelineVisualizer() {
     // Quality Gate remains a future node
     const qualityGate = document.getElementById('node-quality_gate');
     if (qualityGate) qualityGate.className = 'pipeline-node future-node';
+
+    // Reports node remains future
+    const reportsNode = document.getElementById('node-reports');
+    if (reportsNode) reportsNode.className = 'pipeline-node future-node';
 }
 
 function delay(ms) {
@@ -1596,6 +1600,11 @@ async function fetchAndRenderExecutionResults(payload) {
         // Render into the panel
         renderExecutionResults(data);
 
+        // Render Phase 8 report if available
+        if (data.report) {
+            renderReportPanel(data.report);
+        }
+
         // Activate Exec Logs tab
         activateResultsTab('panel-phase3-execution');
 
@@ -1777,6 +1786,131 @@ function renderExecutionResults(response) {
     });
 
     lucide.createIcons();
+}
+
+/* ---- PHASE 8: REPORTS PANEL ---- */
+
+function renderReportPanel(report) {
+    const emptyState = document.getElementById('report-empty-state');
+    const executiveSummary = document.getElementById('report-executive-summary');
+    const phasesSection = document.getElementById('report-phases');
+    const recommendations = document.getElementById('report-recommendations');
+
+    if (!report) {
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (executiveSummary) executiveSummary.classList.add('hidden');
+        if (phasesSection) phasesSection.classList.add('hidden');
+        if (recommendations) recommendations.classList.add('hidden');
+        return;
+    }
+
+    // Hide empty state
+    if (emptyState) emptyState.classList.add('hidden');
+
+    // Executive Summary
+    if (executiveSummary && report.executive_summary) {
+        executiveSummary.classList.remove('hidden');
+        document.getElementById('report-exec-summary-text').textContent = report.executive_summary;
+    }
+
+    // Phase Status
+    if (phasesSection && Array.isArray(report.phases) && report.phases.length > 0) {
+        phasesSection.classList.remove('hidden');
+        const phasesList = document.getElementById('report-phases-list');
+        phasesList.innerHTML = '';
+        report.phases.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'report-card report-phase-card';
+            const statusClass = p.status === 'passed' ? 'tag-mint-border' : p.status === 'failed' ? 'text-danger' : 'tag-amber-border';
+            card.innerHTML = `
+                <div class="report-card-header">
+                    <span class="report-card-id id-req">Phase ${p.phase_number}</span>
+                    <span class="inline-tag ${statusClass}">${p.status.toUpperCase()}</span>
+                </div>
+                <h4 class="tc-title">${escapeHtml(p.phase_name)}</h4>
+                <p class="card-desc">${escapeHtml(p.summary)}</p>
+            `;
+            phasesList.appendChild(card);
+        });
+    }
+
+    // Metrics
+    if (report.quality_gate) {
+        document.getElementById('report-quality-score').textContent = report.quality_gate.quality_score != null ? report.quality_gate.quality_score.toFixed(1) : '--';
+        document.getElementById('report-release-readiness').textContent = report.quality_gate.release_readiness || '--';
+    }
+    if (report.execution) {
+        document.getElementById('report-pass-rate').textContent = report.execution.pass_rate != null ? report.execution.pass_rate + '%' : '--';
+    }
+    if (report.analysis) {
+        document.getElementById('report-defects').textContent = report.analysis.product_defects || 0;
+    }
+
+    // Recommendations
+    if (recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
+        recommendations.classList.remove('hidden');
+        const list = document.getElementById('report-recommendations-list');
+        list.innerHTML = '';
+        report.recommendations.forEach(r => {
+            const li = document.createElement('li');
+            li.textContent = r;
+            list.appendChild(li);
+        });
+    }
+
+    // Wire export buttons
+    wireExportButtons(report);
+}
+
+function wireExportButtons(report) {
+    const btnJson = document.getElementById('btn-export-json');
+    const btnHtml = document.getElementById('btn-export-html');
+    const btnCsv = document.getElementById('btn-export-csv');
+
+    if (btnJson) {
+        btnJson.onclick = () => downloadReport(report, 'json');
+    }
+    if (btnHtml) {
+        btnHtml.onclick = () => downloadReport(report, 'html');
+    }
+    if (btnCsv) {
+        btnCsv.onclick = () => downloadReport(report, 'csv');
+    }
+}
+
+function downloadReport(report, fmt) {
+    // Use the backend export endpoint for HTML and CSV (server-rendered)
+    // For JSON, just download the report object directly
+    if (fmt === 'json') {
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `test-report-${report.project_id || 'unknown'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } else {
+        // For HTML/CSV, use the backend export endpoint
+        const payload = compilePayloadFromVisuals();
+        fetch(`http://127.0.0.1:8085/testing/report/export?fmt=${fmt}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Export failed');
+            return res.blob();
+        })
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `test-report-${report.project_id || 'unknown'}.${fmt}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        })
+        .catch(e => console.error('Export error', e));
+    }
 }
 
 /* ---- SHARED HELPERS ---- */

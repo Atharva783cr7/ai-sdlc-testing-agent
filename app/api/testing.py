@@ -1,5 +1,7 @@
 import logging
+from typing import Optional
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import HTMLResponse, Response
 from app.models.schemas import (
     TestingStartRequest,
     TestingStartResponse,
@@ -16,6 +18,8 @@ from app.analysis.result_intelligence import analyze_execution_report
 from app.analysis.schemas import ResultIntelligenceReport
 from app.quality.quality_gate import evaluate_quality_gate
 from app.quality.schemas import QualityGateReport
+from app.reports.report_generator import ReportGenerator
+from app.reports.schemas import ExportFormat
 
 router = APIRouter(prefix="/testing", tags=["Testing"])
 logger = logging.getLogger(__name__)
@@ -83,6 +87,7 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
             )
 
         # Build response schema from the resulting state
+        report = final_state.get("report")
         response = TestingStartResponse(
             project_id=final_state["project_id"],
             validation_status=final_state["validation_status"],
@@ -90,6 +95,7 @@ def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse
             workflow_status=final_state["workflow_status"],
             intelligence=intelligence,
             test_design=test_design,
+            report=report,
         )
         return response
 
@@ -129,6 +135,47 @@ def _run_quality_gate(state: TestingState, exec_report: dict, analysis: ResultIn
     )
     _store_quality_gate(state, report)
     return report
+
+
+def _generate_report(state: TestingState, exec_report: Optional[dict] = None) -> None:
+    """Phase 8: generate the comprehensive test report and store it in the state."""
+    generator = ReportGenerator()
+
+    def _to_dict(val):
+        if val is None:
+            return None
+        if isinstance(val, dict):
+            return val
+        if hasattr(val, "model_dump"):
+            return val.model_dump()
+        if hasattr(val, "dict"):
+            return val.dict()
+        return val
+
+    report = generator.generate(
+        project_id=state.get("project_id", "unknown"),
+        requirements=[_to_dict(r) for r in (state.get("requirements") or [])],
+        risks=[_to_dict(r) for r in (state.get("risks") or [])],
+        change_impact=_to_dict(state.get("change_impact")),
+        coverage=_to_dict(state.get("coverage")),
+        test_strategy=_to_dict(state.get("test_strategy")),
+        test_cases=[_to_dict(tc) for tc in (state.get("test_cases") or [])],
+        test_scenarios=[_to_dict(ts) for ts in (state.get("test_scenarios") or [])],
+        generated_test_data=[_to_dict(td) for td in (state.get("generated_test_data") or [])],
+        traceability=_to_dict(state.get("traceability")),
+        execution_results=state.get("execution_results") or [],
+        execution_summary=state.get("execution_summary"),
+        execution_status=state.get("execution_status"),
+        result_intelligence=_to_dict(state.get("result_intelligence")),
+        failure_analyses=[_to_dict(fa) for fa in (state.get("failure_analyses") or [])],
+        root_cause_analyses=[_to_dict(rc) for rc in (state.get("root_cause_analyses") or [])],
+        defect_analyses=[_to_dict(da) for da in (state.get("defect_analyses") or [])],
+        flaky_analyses=[_to_dict(fa) for fa in (state.get("flaky_analyses") or [])],
+        quality_gate_report=_to_dict(state.get("quality_gate_report")),
+        quality_score=state.get("quality_score"),
+        release_readiness=state.get("release_readiness"),
+    )
+    state["report"] = report
 
 
 @router.post("/execute", response_model=TestExecutionResponse, status_code=status.HTTP_200_OK)
@@ -237,6 +284,9 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
         # Phase 7: quality gate and release readiness over Phase 2/5/6 evidence
         quality_gate_report = _run_quality_gate(final_state, exec_report, analysis)
 
+        # Phase 8: generate comprehensive report
+        _generate_report(final_state, exec_report)
+
         # Map summary keys
         summary_map = exec_report.get("summary", {})
         summary = TestExecutionSummary(
@@ -281,6 +331,7 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
             max_workers=exec_report.get("max_workers"),
             analysis=analysis,
             quality_gate=quality_gate_report,
+            report=final_state.get("report"),
         )
         return response
 
@@ -288,4 +339,146 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
         raise
     except Exception as e:
         logger.error(f"Execution endpoint failed: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Standalone report generation and export endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/report/generate", status_code=status.HTTP_200_OK)
+def generate_report_from_state(payload: TestingStartRequest) -> dict:
+    """Run the full workflow and generate a comprehensive report without executing tests."""
+    logger.info(f"Received report generation request for project ID: {payload.project_id}")
+
+    initial_state: TestingState = {
+        "project_id": payload.project_id,
+        "srs": payload.srs,
+        "sdd": payload.sdd,
+        "source_code": payload.source_code,
+        "api_docs": payload.api_docs,
+        "database_schema": payload.database_schema,
+        "test_data": payload.test_data,
+        "environment": payload.environment,
+        "validation_status": "pending",
+        "validation_errors": [],
+        "context": {},
+        "workflow_status": "pending",
+        "human_feedback": None,
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
+    }
+
+    try:
+        final_state = testing_workflow.invoke(initial_state)
+
+        if final_state.get("validation_status") != "passed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Input validation failed", "validation_errors": final_state.get("validation_errors")}
+            )
+
+        # Run analysis and quality gate on empty execution
+        analysis = analyze_execution_report({"results": []})
+        _store_analysis(final_state, analysis)
+        _run_quality_gate(final_state, {"results": [], "summary": {"total": 0, "pass": 0, "fail": 0, "error": 0, "skipped": 0}}, analysis)
+
+        # Generate Phase 8 report
+        _generate_report(final_state)
+
+        report = final_state.get("report")
+        return {
+            "project_id": payload.project_id,
+            "report": report.model_dump() if report else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Report generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/report/export", status_code=status.HTTP_200_OK)
+def export_report(payload: TestingStartRequest, fmt: str = "json") -> Response:
+    """Run the full workflow and export the report in the specified format (json, html, csv)."""
+    logger.info(f"Received report export request for project ID: {payload.project_id}, format: {fmt}")
+
+    initial_state: TestingState = {
+        "project_id": payload.project_id,
+        "srs": payload.srs,
+        "sdd": payload.sdd,
+        "source_code": payload.source_code,
+        "api_docs": payload.api_docs,
+        "database_schema": payload.database_schema,
+        "test_data": payload.test_data,
+        "environment": payload.environment,
+        "validation_status": "pending",
+        "validation_errors": [],
+        "context": {},
+        "workflow_status": "pending",
+        "human_feedback": None,
+        "requirements": [],
+        "risks": [],
+        "change_impact": None,
+        "coverage": None,
+        "test_strategy": None,
+        "test_cases": [],
+        "test_scenarios": [],
+        "generated_test_data": [],
+        "traceability": None,
+        "test_design_warnings": [],
+    }
+
+    try:
+        final_state = testing_workflow.invoke(initial_state)
+
+        if final_state.get("validation_status") != "passed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Input validation failed", "validation_errors": final_state.get("validation_errors")}
+            )
+
+        analysis = analyze_execution_report({"results": []})
+        _store_analysis(final_state, analysis)
+        _run_quality_gate(final_state, {"results": [], "summary": {"total": 0, "pass": 0, "fail": 0, "error": 0, "skipped": 0}}, analysis)
+        _generate_report(final_state)
+
+        report = final_state.get("report")
+        if not report:
+            raise HTTPException(status_code=500, detail="Report generation failed")
+
+        try:
+            export_format = ExportFormat(fmt.lower())
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}. Use json, html, or csv.")
+
+        generator = ReportGenerator()
+        content = generator.export(report, export_format)
+
+        media_types = {
+            ExportFormat.JSON: "application/json",
+            ExportFormat.HTML: "text/html",
+            ExportFormat.CSV: "text/csv",
+        }
+        filename = f"test-report-{payload.project_id}.{export_format.value}"
+
+        return Response(
+            content=content,
+            media_type=media_types[export_format],
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Report export failed: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

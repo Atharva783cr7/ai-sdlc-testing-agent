@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from app.analysis.schemas import ResultIntelligenceReport
 from app.quality.schemas import QualityGateReport
+from app.reports.schemas import TestReport
 from app.models.state import (
     RequirementInfo,
     RiskInfo,
@@ -108,6 +109,8 @@ class TestExecutionResponse(BaseModel):
     analysis: Optional[ResultIntelligenceReport] = Field(default=None, description="Aggregated Phase 6 result intelligence for this run")
     # Phase 7 quality gate / release readiness (optional, backwards-compatible)
     quality_gate: Optional[QualityGateReport] = Field(default=None, description="Phase 7 quality gate and release readiness decision for this run")
+    # Phase 8 report generation (optional, backwards-compatible)
+    report: Optional[TestReport] = Field(default=None, description="Phase 8 comprehensive test report")
 
 
 class TestingStartResponse(BaseModel):
@@ -120,3 +123,5 @@ class TestingStartResponse(BaseModel):
     workflow_status: str
     intelligence: Optional[IntelligenceSummary] = Field(default=None, description="Encapsulated quality and testing intelligence report")
     test_design: Optional[TestDesignSummary] = Field(default=None, description="Phase 3 test design and data intelligence")
+    # Phase 8 report generation (optional, backwards-compatible)
+    report: Optional[TestReport] = Field(default=None, description="Phase 8 comprehensive test report")

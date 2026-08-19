@@ -182,12 +182,22 @@
                     <div class="pipeline-arrow future-arrow" id="arrow-8">➔</div>
 
                     <!-- Node 9: QUALITY GATE -->
-                    <div class="pipeline-node future-node" id="node-quality_gate">
+                    <div class="pipeline-node" id="node-quality_gate">
                         <div class="node-inner">
-                            <i data-lucide="unlocked"></i>
+                            <i data-lucide="shield-check"></i>
                             <span class="ph-badge">PH 7</span>
                         </div>
                         <span class="node-name">QUALITY GATE</span>
+                    </div>
+                    <div class="pipeline-arrow future-arrow" id="arrow-9">➔</div>
+
+                    <!-- Node 10: REPORTS -->
+                    <div class="pipeline-node future-node" id="node-reports">
+                        <div class="node-inner">
+                            <i data-lucide="bar-chart-3"></i>
+                            <span class="ph-badge">PH 8</span>
+                        </div>
+                        <span class="node-name">REPORTS</span>
                     </div>
                 </div>
             </section>
@@ -534,6 +544,11 @@
                                         <span>Traceability</span>
                                         <span class="phase3-tag tag-cyan">PH 3</span>
                                     </button>
+                                    <button class="results-nav-btn phase8-tab" data-target="panel-reports">
+                                        <i data-lucide="bar-chart-3"></i>
+                                        <span>Reports</span>
+                                        <span class="phase3-tag tag-cyan">PH 8</span>
+                                    </button>
                                 </div>
 
                                 <div class="tab-panels-viewport">
@@ -728,6 +743,68 @@
 
                                         <div id="traceability-list" class="cards-grid">
                                             <!-- Dynamically injected -->
+                                        </div>
+                                    </div>
+
+                                    <!-- REPORTS PANEL -->
+                                    <div id="panel-reports" class="tab-content">
+                                        <div class="content-header-bar">
+                                            <span>COMPREHENSIVE TEST REPORT (PHASE 8)</span>
+                                            <span class="source-mono">Source: Report Generator</span>
+                                        </div>
+
+                                        <div class="report-export-bar">
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-json">
+                                                <i data-lucide="download"></i> Export JSON
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-html">
+                                                <i data-lucide="download"></i> Export HTML
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-csv">
+                                                <i data-lucide="download"></i> Export CSV
+                                            </button>
+                                        </div>
+
+                                        <div id="report-executive-summary" class="report-executive-summary hidden">
+                                            <h4>Executive Summary</h4>
+                                            <p id="report-exec-summary-text"></p>
+                                        </div>
+
+                                        <div id="report-phases" class="report-phases-section hidden">
+                                            <h4>Phase Status</h4>
+                                            <div id="report-phases-list" class="report-phases-grid"></div>
+                                        </div>
+
+                                        <div class="report-metrics-grid">
+                                            <div class="report-metric-card">
+                                                <span class="report-metric-label">QUALITY SCORE</span>
+                                                <span class="report-metric-value" id="report-quality-score">--</span>
+                                            </div>
+                                            <div class="report-metric-card">
+                                                <span class="report-metric-label">RELEASE READINESS</span>
+                                                <span class="report-metric-value" id="report-release-readiness">--</span>
+                                            </div>
+                                            <div class="report-metric-card">
+                                                <span class="report-metric-label">PASS RATE</span>
+                                                <span class="report-metric-value" id="report-pass-rate">--</span>
+                                            </div>
+                                            <div class="report-metric-card">
+                                                <span class="report-metric-label">DEFECTS</span>
+                                                <span class="report-metric-value" id="report-defects">--</span>
+                                            </div>
+                                        </div>
+
+                                        <div id="report-recommendations" class="report-recommendations hidden">
+                                            <h4>Recommendations</h4>
+                                            <ul id="report-recommendations-list"></ul>
+                                        </div>
+
+                                        <div id="report-empty-state" class="center-empty">
+                                            <div class="radar-ping">
+                                                <i data-lucide="bar-chart-3"></i>
+                                            </div>
+                                            <h3>NO REPORT AVAILABLE</h3>
+                                            <p>Run the testing pipeline to generate a comprehensive Phase 8 report.</p>
                                         </div>
                                     </div>
 
