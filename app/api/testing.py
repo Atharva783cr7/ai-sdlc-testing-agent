@@ -14,6 +14,8 @@ from app.workflow.testing_workflow import testing_workflow
 from app.execution.controller import ExecutionController
 from app.analysis.result_intelligence import analyze_execution_report
 from app.analysis.schemas import ResultIntelligenceReport
+from app.quality.quality_gate import evaluate_quality_gate
+from app.quality.schemas import QualityGateReport
 
 router = APIRouter(prefix="/testing", tags=["Testing"])
 logger = logging.getLogger(__name__)
@@ -108,6 +110,27 @@ def _store_analysis(state: TestingState, analysis: ResultIntelligenceReport) -> 
     state["flaky_analyses"] = analysis.flaky_tests
 
 
+def _store_quality_gate(state: TestingState, report: QualityGateReport) -> None:
+    """Persist the Phase 7 quality gate decision into the workflow state."""
+    state["quality_gate_report"] = report
+    state["quality_score"] = report.quality_score
+    state["release_readiness"] = report.release_readiness.value
+
+
+def _run_quality_gate(state: TestingState, exec_report: dict, analysis: ResultIntelligenceReport) -> QualityGateReport:
+    """Phase 7: evaluate the quality gates over Phase 2/5/6 evidence."""
+    report = evaluate_quality_gate(
+        execution_report=exec_report,
+        analysis=analysis,
+        coverage=state.get("coverage"),
+        risks=state.get("risks"),
+        test_cases=state.get("test_cases"),
+        traceability=state.get("traceability"),
+    )
+    _store_quality_gate(state, report)
+    return report
+
+
 @router.post("/execute", response_model=TestExecutionResponse, status_code=status.HTTP_200_OK)
 def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecutionResponse:
     """Run the full workflow (Phases 1-3) and execute Phase 3 generated test cases.
@@ -168,6 +191,11 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
 
             analysis = analyze_execution_report({"results": []})
             _store_analysis(final_state, analysis)
+            quality_gate_report = _run_quality_gate(
+                final_state,
+                {"results": [], "summary": final_state["execution_summary"]},
+                analysis,
+            )
 
             summary = TestExecutionSummary(total=0, passed=0, failed=0, errors=0, skipped=0)
             response = TestExecutionResponse(
@@ -176,6 +204,7 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
                 execution_summary=summary,
                 results=[],
                 analysis=analysis,
+                quality_gate=quality_gate_report,
             )
             return response
 
@@ -204,6 +233,9 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
         # Phase 6: derive result intelligence from the Phase 5 execution report
         analysis = analyze_execution_report(exec_report)
         _store_analysis(final_state, analysis)
+
+        # Phase 7: quality gate and release readiness over Phase 2/5/6 evidence
+        quality_gate_report = _run_quality_gate(final_state, exec_report, analysis)
 
         # Map summary keys
         summary_map = exec_report.get("summary", {})
@@ -248,6 +280,7 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
             max_retries=exec_report.get("max_retries"),
             max_workers=exec_report.get("max_workers"),
             analysis=analysis,
+            quality_gate=quality_gate_report,
         )
         return response
 

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from app.analysis.schemas import ResultIntelligenceReport
+from app.quality.schemas import QualityGateReport
 from app.models.state import (
     RequirementInfo,
     RiskInfo,
@@ -105,6 +106,8 @@ class TestExecutionResponse(BaseModel):
     max_workers: Optional[int] = Field(default=None, description="Max worker threads used for this run")
     # Phase 6 result intelligence (optional, backwards-compatible)
     analysis: Optional[ResultIntelligenceReport] = Field(default=None, description="Aggregated Phase 6 result intelligence for this run")
+    # Phase 7 quality gate / release readiness (optional, backwards-compatible)
+    quality_gate: Optional[QualityGateReport] = Field(default=None, description="Phase 7 quality gate and release readiness decision for this run")
 
 
 class TestingStartResponse(BaseModel):

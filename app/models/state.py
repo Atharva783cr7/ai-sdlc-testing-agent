@@ -8,6 +8,7 @@ from app.analysis.schemas import (
     ResultIntelligenceReport,
     RootCauseAnalysis,
 )
+from app.quality.schemas import QualityGateReport
 
 SourceType = Literal["srs", "sdd", "source_code", "ai_inference"]
 
@@ -179,3 +180,8 @@ class TestingState(TypedDict):
     root_cause_analyses: List[RootCauseAnalysis]
     defect_analyses: List[DefectAnalysis]
     flaky_analyses: List[FlakyTestAnalysis]
+
+    # Phase 7 quality gate / release readiness fields
+    quality_gate_report: Optional[QualityGateReport]
+    quality_score: Optional[float]
+    release_readiness: Optional[str]
