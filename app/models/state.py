@@ -189,3 +189,9 @@ class TestingState(TypedDict):
 
     # Phase 8 report generation fields
     report: Optional[TestReport]
+
+    # Phase 8 human approval fields
+    approval_status: Optional[str]  # "pending", "approved", "rejected"
+    approved_by: Optional[str]      # Reviewer identifier
+    approval_comment: Optional[str] # Rejection reason or approval notes
+    approval_timestamp: Optional[str] # ISO 8601 timestamp

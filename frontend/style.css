@@ -2139,3 +2139,208 @@ input:checked + .switch-slider:before {
     background: var(--cyan);
     color: var(--bg-main);
 }
+
+/* ---- HUMAN APPROVAL SECTION STYLES ---- */
+
+.approval-section {
+    padding: 16px;
+    border-top: 1px solid var(--border-teal);
+    margin-top: 16px;
+}
+
+.approval-status-card {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-teal);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.approval-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: rgba(245, 158, 11, 0.05);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.approval-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--amber);
+    box-shadow: 0 0 6px var(--amber);
+}
+
+.approval-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.approval-status-card.approved .approval-indicator {
+    background-color: rgba(52, 211, 153, 0.05);
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.approval-status-card.approved .approval-dot {
+    background-color: var(--mint);
+    box-shadow: 0 0 6px var(--mint);
+}
+
+.approval-status-card.approved .approval-text {
+    color: var(--mint);
+}
+
+.approval-status-card.rejected .approval-indicator {
+    background-color: rgba(251, 113, 133, 0.05);
+    border-color: rgba(251, 113, 133, 0.3);
+}
+
+.approval-status-card.rejected .approval-dot {
+    background-color: var(--danger);
+    box-shadow: 0 0 6px var(--danger);
+}
+
+.approval-status-card.rejected .approval-text {
+    color: var(--danger);
+}
+
+.approval-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.approval-reviewer,
+.approval-timestamp {
+    font-family: var(--font-mono);
+}
+
+.release-status-display {
+    background-color: rgba(7, 26, 29, 0.4);
+    border: 1px solid var(--border-teal);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.release-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(30, 69, 72, 0.3);
+}
+
+.release-status-row:last-child {
+    border-bottom: none;
+}
+
+.release-status-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.release-status-value {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.release-status-value.status-ready {
+    color: var(--mint);
+}
+
+.release-status-value.status-not-ready {
+    color: var(--danger);
+}
+
+.release-status-value.status-pending {
+    color: var(--amber);
+}
+
+.approval-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.rejection-comment-section {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: rgba(251, 113, 133, 0.05);
+    border: 1px solid rgba(251, 113, 133, 0.3);
+    border-radius: 8px;
+}
+
+.rejection-comment-section label {
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.rejection-comment-section textarea {
+    width: 100%;
+    min-height: 80px;
+    margin-bottom: 12px;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-teal);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    resize: vertical;
+}
+
+.rejection-comment-section textarea:focus {
+    outline: none;
+    border-color: var(--border-active);
+    box-shadow: var(--glow-cyan);
+}
+
+.comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.approval-comment-display {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: rgba(13, 39, 42, 0.4);
+    border-left: 2px solid var(--cyan);
+    border-radius: 0 4px 4px 0;
+}
+
+.approval-comment-display strong {
+    font-size: 11px;
+    color: var(--cyan);
+    display: block;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.approval-comment-display p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0;
+}

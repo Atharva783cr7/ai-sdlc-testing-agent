@@ -1,5 +1,6 @@
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import HTMLResponse, Response
 from app.models.schemas import (
@@ -10,6 +11,9 @@ from app.models.schemas import (
     TestExecutionResponse,
     TestExecutionResult,
     TestExecutionSummary,
+    ApprovalStatus,
+    ApprovalRequest,
+    ApprovalResponse,
 )
 from app.models.state import TestingState
 from app.workflow.testing_workflow import testing_workflow
@@ -23,6 +27,40 @@ from app.reports.schemas import ExportFormat
 
 router = APIRouter(prefix="/testing", tags=["Testing"])
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Approval Storage (In-Memory)
+# ---------------------------------------------------------------------------
+# NOTE: This is a simple in-memory implementation for Phase 8.
+# For production, replace with persistent database storage.
+# Concurrent access considerations: This simple dict is not thread-safe.
+# In production, use proper database transactions or locking mechanisms.
+
+_approval_store: Dict[str, Dict[str, Any]] = {}  # Key: project_id, Value: approval state
+
+def _get_approval_state(project_id: str) -> Optional[Dict[str, Any]]:
+    """Get approval state for a project, or None if not exists."""
+    return _approval_store.get(project_id)
+
+def _set_approval_state(project_id: str, approval_data: Dict[str, Any]) -> None:
+    """Set approval state for a project."""
+    _approval_store[project_id] = approval_data
+
+def _calculate_release_allowed(approval_status: str, release_readiness: Optional[str]) -> bool:
+    """
+    Calculate whether release is allowed based on approval status and quality gate.
+    
+    Rules:
+    - release_allowed is true ONLY when:
+      * approval_status == "approved" AND
+      * release_readiness == "READY"
+    - Human approval does NOT override a failed quality gate
+    """
+    if approval_status != "approved":
+        return False
+    if release_readiness != "READY":
+        return False
+    return True
 
 @router.post("/start", response_model=TestingStartResponse, status_code=status.HTTP_200_OK)
 def start_testing_workflow(payload: TestingStartRequest) -> TestingStartResponse:
@@ -286,6 +324,21 @@ def execute_test_cases_from_workflow(payload: TestingStartRequest) -> TestExecut
 
         # Phase 8: generate comprehensive report
         _generate_report(final_state, exec_report)
+        
+        # Initialize approval state with quality gate information
+        project_id = final_state.get("project_id")
+        quality_gate_report = final_state.get("quality_gate_report")
+        
+        if quality_gate_report:
+            _set_approval_state(project_id, {
+                "approval_status": "pending",
+                "approved_by": None,
+                "approval_comment": None,
+                "approval_timestamp": None,
+                "report_id": final_state.get("report").report_id if final_state.get("report") else None,
+                "release_readiness": quality_gate_report.release_readiness.value if quality_gate_report.release_readiness else None,
+                "quality_gate_status": quality_gate_report.overall_status.value if quality_gate_report.overall_status else None,
+            })
 
         # Map summary keys
         summary_map = exec_report.get("summary", {})
@@ -482,3 +535,219 @@ def export_report(payload: TestingStartRequest, fmt: str = "json") -> Response:
     except Exception as e:
         logger.error(f"Report export failed: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Human Approval / Reject Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/report/approve", response_model=ApprovalResponse, status_code=status.HTTP_200_OK)
+def approve_report(payload: ApprovalRequest) -> ApprovalResponse:
+    """
+    Approve a test report for release.
+    
+    Validates:
+    - Report exists for the project
+    - Current approval status is pending
+    - Reviewer identifier is provided
+    
+    Sets status to approved and calculates release_allowed based on quality gate.
+    """
+    logger.info(f"Approval request for project {payload.project_id}, report {payload.report_id} by {payload.approved_by}")
+    
+    # Get current approval state
+    current_state = _get_approval_state(payload.project_id)
+    
+    # Initialize as pending if no state exists
+    if current_state is None:
+        current_state = {
+            "approval_status": "pending",
+            "approved_by": None,
+            "approval_comment": None,
+            "approval_timestamp": None,
+            "report_id": None,
+            "release_readiness": None,
+            "quality_gate_status": None,
+        }
+    
+    # Validate state machine: can only approve from pending
+    if current_state["approval_status"] != "pending":
+        logger.warning(f"Cannot approve report in status: {current_state['approval_status']}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot approve report with current status: {current_state['approval_status']}. Status must be pending."
+        )
+    
+    # Validate reviewer
+    if not payload.approved_by or not payload.approved_by.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reviewer identifier (approved_by) is required"
+        )
+    
+    # Generate timestamp
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Update approval state
+    updated_state = {
+        **current_state,
+        "approval_status": "approved",
+        "approved_by": payload.approved_by.strip(),
+        "approval_comment": payload.comment,
+        "approval_timestamp": timestamp,
+        "report_id": payload.report_id,
+    }
+    
+    _set_approval_state(payload.project_id, updated_state)
+    
+    # Calculate release_allowed based on quality gate
+    release_allowed = _calculate_release_allowed(
+        updated_state["approval_status"],
+        updated_state.get("release_readiness")
+    )
+    
+    logger.info(f"Report {payload.report_id} approved by {payload.approved_by}, release_allowed: {release_allowed}")
+    
+    return ApprovalResponse(
+        project_id=payload.project_id,
+        report_id=payload.report_id,
+        approval_status=ApprovalStatus.APPROVED,
+        approved_by=payload.approved_by.strip(),
+        approval_timestamp=timestamp,
+        comment=payload.comment,
+        release_allowed=release_allowed,
+        quality_gate_status=updated_state.get("quality_gate_status"),
+        release_readiness=updated_state.get("release_readiness"),
+    )
+
+
+@router.post("/report/reject", response_model=ApprovalResponse, status_code=status.HTTP_200_OK)
+def reject_report(payload: ApprovalRequest) -> ApprovalResponse:
+    """
+    Reject a test report, blocking release.
+    
+    Validates:
+    - Report exists for the project
+    - Current approval status is pending
+    - Reviewer identifier is provided
+    - Rejection reason (comment) is non-empty
+    
+    Sets status to rejected and release_allowed to false.
+    """
+    logger.info(f"Rejection request for project {payload.project_id}, report {payload.report_id} by {payload.approved_by}")
+    
+    # Get current approval state
+    current_state = _get_approval_state(payload.project_id)
+    
+    # Initialize as pending if no state exists
+    if current_state is None:
+        current_state = {
+            "approval_status": "pending",
+            "approved_by": None,
+            "approval_comment": None,
+            "approval_timestamp": None,
+            "report_id": None,
+            "release_readiness": None,
+            "quality_gate_status": None,
+        }
+    
+    # Validate state machine: can only reject from pending
+    if current_state["approval_status"] != "pending":
+        logger.warning(f"Cannot reject report in status: {current_state['approval_status']}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot reject report with current status: {current_state['approval_status']}. Status must be pending."
+        )
+    
+    # Validate reviewer
+    if not payload.approved_by or not payload.approved_by.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reviewer identifier (approved_by) is required"
+        )
+    
+    # Validate rejection reason is required
+    if not payload.comment or not payload.comment.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rejection reason (comment) is required for rejecting a report"
+        )
+    
+    # Generate timestamp
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Update approval state
+    updated_state = {
+        **current_state,
+        "approval_status": "rejected",
+        "approved_by": payload.approved_by.strip(),
+        "approval_comment": payload.comment.strip(),
+        "approval_timestamp": timestamp,
+        "report_id": payload.report_id,
+    }
+    
+    _set_approval_state(payload.project_id, updated_state)
+    
+    # Release is never allowed after rejection
+    release_allowed = False
+    
+    logger.info(f"Report {payload.report_id} rejected by {payload.approved_by}, reason: {payload.comment[:100]}")
+    
+    return ApprovalResponse(
+        project_id=payload.project_id,
+        report_id=payload.report_id,
+        approval_status=ApprovalStatus.REJECTED,
+        approved_by=payload.approved_by.strip(),
+        approval_timestamp=timestamp,
+        comment=payload.comment.strip(),
+        release_allowed=release_allowed,
+        quality_gate_status=updated_state.get("quality_gate_status"),
+        release_readiness=updated_state.get("release_readiness"),
+    )
+
+
+@router.get("/report/approval-status/{project_id}", response_model=ApprovalResponse, status_code=status.HTTP_200_OK)
+def get_approval_status(project_id: str) -> ApprovalResponse:
+    """
+    Get current approval status for a project's report.
+    
+    Returns PENDING status if no approval has been recorded yet.
+    """
+    logger.info(f"Approval status request for project {project_id}")
+    
+    current_state = _get_approval_state(project_id)
+    
+    # Return pending state if no approval exists
+    if current_state is None:
+        return ApprovalResponse(
+            project_id=project_id,
+            report_id="",
+            approval_status=ApprovalStatus.PENDING,
+            approved_by="--",
+            approval_timestamp="--",
+            comment=None,
+            release_allowed=False,
+            quality_gate_status=None,
+            release_readiness=None,
+        )
+    
+    # Map string status to enum
+    status_enum = ApprovalStatus(current_state["approval_status"])
+    
+    # Calculate current release_allowed
+    release_allowed = _calculate_release_allowed(
+        current_state["approval_status"],
+        current_state.get("release_readiness")
+    )
+    
+    return ApprovalResponse(
+        project_id=project_id,
+        report_id=current_state.get("report_id", ""),
+        approval_status=status_enum,
+        approved_by=current_state.get("approved_by", "--"),
+        approval_timestamp=current_state.get("approval_timestamp", "--"),
+        comment=current_state.get("approval_comment"),
+        release_allowed=release_allowed,
+        quality_gate_status=current_state.get("quality_gate_status"),
+        release_readiness=current_state.get("release_readiness"),
+    )

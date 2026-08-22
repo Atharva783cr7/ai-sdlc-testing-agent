@@ -799,6 +799,71 @@
                                             <ul id="report-recommendations-list"></ul>
                                         </div>
 
+                                        <!-- Human Approval Section -->
+                                        <div id="approval-status-section" class="approval-section hidden">
+                                            <div class="content-header-bar">
+                                                <span>HUMAN APPROVAL STATUS</span>
+                                                <span class="source-mono">Source: Manual Review</span>
+                                            </div>
+                                            
+                                            <div class="approval-status-card" id="approval-status-card">
+                                                <div class="approval-indicator" id="approval-indicator">
+                                                    <span class="approval-dot"></span>
+                                                    <span class="approval-text" id="approval-text">PENDING APPROVAL</span>
+                                                </div>
+                                                <div class="approval-meta" id="approval-meta">
+                                                    <span class="approval-reviewer" id="approval-reviewer">--</span>
+                                                    <span class="approval-timestamp" id="approval-timestamp">--</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Release Status Display -->
+                                            <div class="release-status-display" id="release-status-display">
+                                                <div class="release-status-row">
+                                                    <span class="release-status-label">QUALITY GATE:</span>
+                                                    <span class="release-status-value" id="quality-gate-status">--</span>
+                                                </div>
+                                                <div class="release-status-row">
+                                                    <span class="release-status-label">RELEASE READINESS:</span>
+                                                    <span class="release-status-value" id="release-readiness-status">--</span>
+                                                </div>
+                                                <div class="release-status-row">
+                                                    <span class="release-status-label">HUMAN APPROVAL:</span>
+                                                    <span class="release-status-value" id="human-approval-status">--</span>
+                                                </div>
+                                                <div class="release-status-row">
+                                                    <span class="release-status-label">RELEASE ALLOWED:</span>
+                                                    <span class="release-status-value" id="release-allowed-status">--</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Approval Actions -->
+                                            <div class="approval-actions" id="approval-actions">
+                                                <button class="btn btn-primary btn-glow" id="btn-approve">
+                                                    <i data-lucide="check-circle"></i> Approve Release
+                                                </button>
+                                                <button class="btn btn-danger" id="btn-reject">
+                                                    <i data-lucide="x-circle"></i> Reject Release
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Rejection Comment Input -->
+                                            <div class="rejection-comment-section hidden" id="rejection-comment-section">
+                                                <label for="rejection-comment">Rejection Reason (Required)</label>
+                                                <textarea id="rejection-comment" placeholder="Explain why this release is being rejected..."></textarea>
+                                                <div class="comment-actions">
+                                                    <button class="btn btn-secondary btn-sm" id="btn-cancel-reject">Cancel</button>
+                                                    <button class="btn btn-danger btn-sm" id="btn-confirm-reject">Confirm Rejection</button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Approval Comment Display -->
+                                            <div class="approval-comment-display hidden" id="approval-comment-display">
+                                                <strong>Reviewer Comment:</strong>
+                                                <p id="approval-comment-text"></p>
+                                            </div>
+                                        </div>
+
                                         <div id="report-empty-state" class="center-empty">
                                             <div class="radar-ping">
                                                 <i data-lucide="bar-chart-3"></i>

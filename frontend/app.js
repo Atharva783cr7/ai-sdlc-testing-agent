@@ -1913,6 +1913,206 @@ function downloadReport(report, fmt) {
     }
 }
 
+/* ---- HUMAN APPROVAL FUNCTIONALITY ---- */
+
+// Approval state management
+let currentReport = null;
+let currentApprovalStatus = null;
+
+async function checkApprovalStatus(projectId) {
+    try {
+        const res = await fetch(`http://127.0.0.1:8085/testing/report/approval-status/${projectId}`);
+        if (res.ok) {
+            const data = await res.json();
+            currentApprovalStatus = data;
+            renderApprovalStatus(data);
+        }
+    } catch (e) {
+        console.error('Failed to fetch approval status', e);
+    }
+}
+
+function renderApprovalStatus(approval) {
+    const section = document.getElementById('approval-status-section');
+    const card = document.getElementById('approval-status-card');
+    const text = document.getElementById('approval-text');
+    const reviewer = document.getElementById('approval-reviewer');
+    const timestamp = document.getElementById('approval-timestamp');
+    const actions = document.getElementById('approval-actions');
+    const commentDisplay = document.getElementById('approval-comment-display');
+    const commentText = document.getElementById('approval-comment-text');
+    
+    // Quality gate and release readiness display
+    const qualityGateStatus = document.getElementById('quality-gate-status');
+    const releaseReadinessStatus = document.getElementById('release-readiness-status');
+    const humanApprovalStatus = document.getElementById('human-approval-status');
+    const releaseAllowedStatus = document.getElementById('release-allowed-status');
+    
+    if (!section) return;
+    
+    section.classList.remove('hidden');
+    
+    // Reset classes
+    card.classList.remove('approved', 'rejected');
+    
+    // Render release status display
+    qualityGateStatus.textContent = approval.quality_gate_status || '--';
+    releaseReadinessStatus.textContent = approval.release_readiness || '--';
+    humanApprovalStatus.textContent = approval.approval_status.toUpperCase();
+    releaseAllowedStatus.textContent = approval.release_allowed ? 'YES' : 'NO';
+    
+    // Style release allowed status
+    releaseAllowedStatus.className = 'release-status-value';
+    if (approval.release_allowed) {
+        releaseAllowedStatus.classList.add('status-ready');
+    } else {
+        releaseAllowedStatus.classList.add('status-not-ready');
+    }
+    
+    // Style release readiness
+    releaseReadinessStatus.className = 'release-status-value';
+    if (approval.release_readiness === 'READY') {
+        releaseReadinessStatus.classList.add('status-ready');
+    } else if (approval.release_readiness === 'NOT_READY') {
+        releaseReadinessStatus.classList.add('status-not-ready');
+    } else {
+        releaseReadinessStatus.classList.add('status-pending');
+    }
+    
+    if (approval.approval_status === 'approved') {
+        card.classList.add('approved');
+        text.textContent = 'APPROVED';
+        reviewer.textContent = `Approved by: ${approval.approved_by}`;
+        timestamp.textContent = approval.approval_timestamp;
+        actions.classList.add('hidden');
+        
+        if (approval.comment) {
+            commentDisplay.classList.remove('hidden');
+            commentText.textContent = approval.comment;
+        } else {
+            commentDisplay.classList.add('hidden');
+        }
+    } else if (approval.approval_status === 'rejected') {
+        card.classList.add('rejected');
+        text.textContent = 'REJECTED';
+        reviewer.textContent = `Rejected by: ${approval.approved_by}`;
+        timestamp.textContent = approval.approval_timestamp;
+        actions.classList.add('hidden');
+        
+        if (approval.comment) {
+            commentDisplay.classList.remove('hidden');
+            commentText.textContent = approval.comment;
+        } else {
+            commentDisplay.classList.add('hidden');
+        }
+    } else {
+        text.textContent = 'PENDING APPROVAL';
+        reviewer.textContent = '--';
+        timestamp.textContent = '--';
+        actions.classList.remove('hidden');
+        commentDisplay.classList.add('hidden');
+    }
+}
+
+// Wire approval buttons
+document.getElementById('btn-approve').addEventListener('click', async () => {
+    const reviewer = prompt('Enter your name or identifier:');
+    if (!reviewer || !reviewer.trim()) {
+        alert('Reviewer identifier is required');
+        return;
+    }
+    
+    try {
+        const res = await fetch('http://127.0.0.1:8085/testing/report/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: currentReport.project_id,
+                report_id: currentReport.report_id,
+                approved_by: reviewer.trim(),
+                comment: null
+            })
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            currentApprovalStatus = data;
+            renderApprovalStatus(data);
+        } else {
+            const error = await res.json();
+            alert(`Approval failed: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (e) {
+        console.error('Approval failed', e);
+        alert('Approval failed: Network error');
+    }
+});
+
+document.getElementById('btn-reject').addEventListener('click', () => {
+    document.getElementById('rejection-comment-section').classList.remove('hidden');
+});
+
+document.getElementById('btn-cancel-reject').addEventListener('click', () => {
+    document.getElementById('rejection-comment-section').classList.add('hidden');
+    document.getElementById('rejection-comment').value = '';
+});
+
+document.getElementById('btn-confirm-reject').addEventListener('click', async () => {
+    const comment = document.getElementById('rejection-comment').value.trim();
+    if (!comment) {
+        alert('Please provide a rejection reason');
+        return;
+    }
+    
+    const reviewer = prompt('Enter your name or identifier:');
+    if (!reviewer || !reviewer.trim()) {
+        alert('Reviewer identifier is required');
+        return;
+    }
+    
+    try {
+        const res = await fetch('http://127.0.0.1:8085/testing/report/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: currentReport.project_id,
+                report_id: currentReport.report_id,
+                approved_by: reviewer.trim(),
+                comment: comment
+            })
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            currentApprovalStatus = data;
+            renderApprovalStatus(data);
+            document.getElementById('rejection-comment-section').classList.add('hidden');
+            document.getElementById('rejection-comment').value = '';
+        } else {
+            const error = await res.json();
+            alert(`Rejection failed: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (e) {
+        console.error('Rejection failed', e);
+        alert('Rejection failed: Network error');
+    }
+});
+
+// Update renderReportPanel to include approval check
+const originalRenderReportPanel = renderReportPanel;
+renderReportPanel = function(report) {
+    // Call original function
+    originalRenderReportPanel(report);
+    
+    // Store current report
+    currentReport = report;
+    
+    // Check approval status
+    if (report && report.project_id) {
+        checkApprovalStatus(report.project_id);
+    }
+};
+
 /* ---- SHARED HELPERS ---- */
 
 function renderListBlock(label, items) {

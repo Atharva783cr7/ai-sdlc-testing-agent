@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
+from enum import Enum
 from app.analysis.schemas import ResultIntelligenceReport
 from app.quality.schemas import QualityGateReport
 from app.reports.schemas import TestReport
@@ -125,3 +126,46 @@ class TestingStartResponse(BaseModel):
     test_design: Optional[TestDesignSummary] = Field(default=None, description="Phase 3 test design and data intelligence")
     # Phase 8 report generation (optional, backwards-compatible)
     report: Optional[TestReport] = Field(default=None, description="Phase 8 comprehensive test report")
+
+
+class ApprovalStatus(str, Enum):
+    """Human approval status for test reports."""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ApprovalRequest(BaseModel):
+    """
+    Request model for approving or rejecting a test report.
+    """
+    project_id: str = Field(..., description="Project identifier")
+    report_id: str = Field(..., description="Report ID to approve/reject")
+    approved_by: str = Field(..., description="Reviewer identifier")
+    comment: Optional[str] = Field(default=None, description="Optional comment/reason")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "project_id": "smart-building-001",
+                "report_id": "RPT-ABC123",
+                "approved_by": "john.doe",
+                "comment": "All tests passed, ready for release"
+            }
+        }
+    }
+
+
+class ApprovalResponse(BaseModel):
+    """
+    Response model for approval operations.
+    """
+    project_id: str = Field(..., description="Project identifier")
+    report_id: str = Field(..., description="Report ID")
+    approval_status: ApprovalStatus = Field(..., description="Current approval status")
+    approved_by: str = Field(..., description="Reviewer identifier")
+    approval_timestamp: str = Field(..., description="ISO 8601 timestamp of approval/rejection")
+    comment: Optional[str] = Field(default=None, description="Reviewer comment")
+    release_allowed: bool = Field(..., description="Whether deployment can proceed")
+    quality_gate_status: Optional[str] = Field(default=None, description="Quality gate status for context")
+    release_readiness: Optional[str] = Field(default=None, description="Release readiness for context")
